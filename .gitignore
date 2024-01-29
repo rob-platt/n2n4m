@@ -1,0 +1,5 @@
+__pycache__
+
+type_spectra/
+plebani_data/
+*.json
