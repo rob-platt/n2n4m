@@ -11,7 +11,8 @@ from n2n4m.utils import label_list_to_string, label_string_to_list
 
 LABEL_COLS = ["Image_Name", "Pixel_Class", "Coordinates"]
 
-def load_dataset(path:str)->pd.DataFrame:
+
+def load_dataset(path: str) -> pd.DataFrame:
     """
     Load the JSON dataset from the given path.
 
@@ -32,7 +33,7 @@ def load_dataset(path:str)->pd.DataFrame:
     return pd.read_json(path, dtype={"Image_Name": "string"})
 
 
-def expand_dataset(dataset:pd.DataFrame, bands=ALL_WAVELENGTHS)->pd.DataFrame:
+def expand_dataset(dataset: pd.DataFrame, bands=ALL_WAVELENGTHS) -> pd.DataFrame:
     """
     Convert the spectrum column into a column per wavelength value.
 
@@ -62,113 +63,6 @@ def expand_dataset(dataset:pd.DataFrame, bands=ALL_WAVELENGTHS)->pd.DataFrame:
     return dataset
 
 
-def impute_bad_values(dataset):
-    """
-    Replace any bad values (for CRISM > 1).
-    Tiered approach:
-    1. Replace with mean of other values in class in image
-    2. Replace with mean of other values in image
-    3. Replace with mean of other values in dataset
-
-    Parameters
-    ----------
-    dataset : pd.DataFrame
-        The dataset to replace the bad wavelengths in.
-
-    Returns
-    -------
-    dataset : pd.DataFrame
-        The dataset with the bad values replaced.
-    """
-    output_dataset = dataset.copy(deep=True)
-    dataset["Pixel_Class"] = dataset["Pixel_Class"].apply(lambda x: x[0])
-    for image_name in dataset["Image_Name"].unique():
-        for pixel_class in dataset[dataset["Image_Name"] == image_name][
-            "Pixel_Class"
-        ].unique():
-            class_subset = dataset[
-                (dataset["Image_Name"] == image_name)
-                & (dataset["Pixel_Class"] == pixel_class)
-            ]
-            bad_rows = class_subset[(class_subset.iloc[:, 3:] > 1).any(axis=1)]
-            bad_bands = (
-                bad_rows[bad_rows.iloc[:, 3:] > 1]
-                .iloc[:, 3:]
-                .count()
-                .sort_values(ascending=False)
-            )
-            bad_bands = bad_bands[bad_bands > 0].index
-            for band in bad_bands:
-                rows_with_bad_band = class_subset[class_subset[band] > 1]
-                rows_without_bad_band = class_subset[class_subset[band] <= 1]
-                if (
-                    len(rows_without_bad_band) > 0
-                ):  # Try and replace with mean of other values in class in image
-                    output_dataset.loc[
-                        rows_with_bad_band.index, band
-                    ] = class_subset.loc[
-                        class_subset.index.difference(rows_with_bad_band.index), band
-                    ].mean()
-                else:
-                    image_subset = dataset[dataset["Image_Name"] == image_name]
-                    rows_without_bad_band = image_subset[image_subset[band] <= 1]
-                    if (
-                        len(rows_without_bad_band) > 0
-                    ):  # Try and replace with mean of other values in image
-                        output_dataset.loc[
-                            rows_with_bad_band.index, band
-                        ] = rows_without_bad_band.loc[
-                            rows_without_bad_band.index.difference(
-                                rows_with_bad_band.index
-                            ),
-                            band,
-                        ].mean()
-                    else:  # Replace with mean of other values in dataset
-                        rows_without_bad_band = dataset[dataset[band] <= 1]
-                        output_dataset.loc[
-                            rows_with_bad_band.index, band
-                        ] = rows_without_bad_band.loc[
-                            rows_without_bad_band.index.difference(
-                                rows_with_bad_band.index
-                            ),
-                            band,
-                        ].mean()
-    return output_dataset
-
-
-def impute_column_mean(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
-    data = dataset.drop(columns=LABEL_COLS)
-    label_data = dataset[LABEL_COLS]
-    data[data > threshold] = np.nan
-    data = data.fillna(data.mean())
-    dataset = pd.concat([label_data, data], axis=1)
-    return dataset
-
-
-def impute_bad_values_v2(dataset: pd.DataFrame) -> pd.DataFrame:
-    dataset = label_list_to_string(dataset)
-    for image_name in dataset["Image_Name"].unique():
-        for pixel_class in dataset[dataset["Image_Name"] == image_name][
-            "Pixel_Class"
-        ].unique():
-            class_subset = dataset[
-                (dataset["Image_Name"] == image_name)
-                & (dataset["Pixel_Class"] == pixel_class)
-            ]
-
-            class_subset = impute_column_mean(class_subset, threshold=1)
-            dataset.update(class_subset)
-
-        dataset.update(
-            impute_column_mean(dataset[dataset["Image_Name"] == image_name], threshold=1)
-        )
-
-    dataset.update(impute_column_mean(dataset, threshold=1))
-
-    dataset = label_string_to_list(dataset)
-    return dataset
-
-
 def drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS):
     """
     Drop any bands with consistently bad pixels.
@@ -185,11 +79,114 @@ def drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS):
     dataset : pd.DataFrame
         The dataset with the bad wavelengths dropped.
     """
+    current_cols = dataset.columns
+    current_cols = [col for col in current_cols if col not in LABEL_COLS]
     missing_wavelengths = [
-        str(band) for band in ALL_WAVELENGTHS if band not in bands_to_keep
+        str(band) for band in current_cols if float(band) not in bands_to_keep
     ]
     dataset = dataset.drop(columns=missing_wavelengths, axis=1)
 
+    return dataset
+
+
+def detect_bad_values(dataset: pd.DataFrame, threshold=1) -> bool:
+    """
+    Detect whether any bad values are present in the numerical data of passed dataset.
+
+    Parameters
+    ----------
+    dataset : pd.DataFrame
+        The dataset to detect bad values in.
+    threshold : int
+        The threshold to use to detect bad values.
+        Default: 1
+
+    Returns
+    -------
+    bool
+        Whether bad values are present in the dataset.
+    """
+    data = dataset.drop(columns=LABEL_COLS)
+    label_data = dataset[LABEL_COLS]
+    data[data > threshold] = np.nan
+    if data.isna().any().any():
+        return True
+    else:
+        return False
+
+
+def impute_column_mean(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
+    """
+    Impute any bad values in the dataset with the mean of the column.
+    Dataset modified in place.
+
+    Parameters
+    ----------
+    dataset : pd.DataFrame
+        The dataset to impute the bad values in.
+    threshold : int
+        The threshold to use to detect bad values.
+        Default: 1
+
+    Returns
+    -------
+    dataset : pd.DataFrame
+        The dataset with the bad values imputed.
+    """
+    data = dataset.drop(columns=LABEL_COLS)
+    label_data = dataset[LABEL_COLS]
+    data[data > threshold] = np.nan
+    data = data.fillna(data.mean())
+    dataset = pd.concat([label_data, data], axis=1)
+    return dataset
+
+
+def impute_bad_values(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
+    """
+    Impute any bad values in the dataset.
+    Dataset modified in place.
+
+    Uses a 3 level strategy:
+    1. If good values are present in the same class in the same image, impute using the mean of that band for those pixels.
+    2. If good values are present in the same image, impute using the mean of that band for those pixels.
+    3. If good values are present in the dataset, impute using the mean of that band for those pixels.
+
+    Parameters
+    ----------
+    dataset : pd.DataFrame
+        The dataset to impute the bad values in.
+    threshold : int
+        The threshold to use to detect bad values.
+        Default: 1
+
+    Returns
+    -------
+    dataset : pd.DataFrame
+        The dataset with the bad values imputed.
+    """
+    dataset = label_list_to_string(dataset)
+    for image_name in dataset["Image_Name"].unique():
+        for pixel_class in dataset[dataset["Image_Name"] == image_name][
+            "Pixel_Class"
+        ].unique():
+            class_subset = dataset[
+                (dataset["Image_Name"] == image_name)
+                & (dataset["Pixel_Class"] == pixel_class)
+            ]
+
+            class_subset = impute_column_mean(class_subset, threshold=threshold)
+            dataset.update(class_subset)
+
+        if detect_bad_values(dataset[dataset["Image_Name"] == image_name]):
+            dataset.update(
+                impute_column_mean(
+                    dataset[dataset["Image_Name"] == image_name], threshold=threshold
+                )
+            )
+    if detect_bad_values(dataset):
+        dataset.update(impute_column_mean(dataset, threshold=threshold))
+
+    dataset = label_string_to_list(dataset)
     return dataset
 
 
@@ -463,7 +460,7 @@ def train_validation_split(dataset, bland_pixels=False):
             "0ACE6", "0B2A2", "0B6A2", "0B6C5", "0B6F1", "0B977",
         ]
     # fmt: on
-        
+
     train_set = dataset[~dataset["Image_Name"].isin(validation_set_image_names)]
     validation_set = dataset[dataset["Image_Name"].isin(validation_set_image_names)]
     return train_set, validation_set
