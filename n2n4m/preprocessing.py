@@ -7,6 +7,9 @@ import torch
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
+from n2n4m.utils import label_list_to_string, label_string_to_list
+
+LABEL_COLS = ["Image_Name", "Pixel_Class", "Coordinates"]
 
 def load_dataset(path:str)->pd.DataFrame:
     """
@@ -131,6 +134,39 @@ def impute_bad_values(dataset):
                             band,
                         ].mean()
     return output_dataset
+
+
+def impute_column_mean(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
+    data = dataset.drop(columns=LABEL_COLS)
+    label_data = dataset[LABEL_COLS]
+    data[data > threshold] = np.nan
+    data = data.fillna(data.mean())
+    dataset = pd.concat([label_data, data], axis=1)
+    return dataset
+
+
+def impute_bad_values_v2(dataset: pd.DataFrame) -> pd.DataFrame:
+    dataset = label_list_to_string(dataset)
+    for image_name in dataset["Image_Name"].unique():
+        for pixel_class in dataset[dataset["Image_Name"] == image_name][
+            "Pixel_Class"
+        ].unique():
+            class_subset = dataset[
+                (dataset["Image_Name"] == image_name)
+                & (dataset["Pixel_Class"] == pixel_class)
+            ]
+
+            class_subset = impute_column_mean(class_subset, threshold=1)
+            dataset.update(class_subset)
+
+        dataset.update(
+            impute_column_mean(dataset[dataset["Image_Name"] == image_name], threshold=1)
+        )
+
+    dataset.update(impute_column_mean(dataset, threshold=1))
+
+    dataset = label_string_to_list(dataset)
+    return dataset
 
 
 def drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS):
