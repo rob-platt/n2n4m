@@ -5,7 +5,13 @@ import torch.nn.functional as F
 
 class EncoderBlock(nn.Module):
     def __init__(
-        self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, depth=2
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=3,
+        stride=1,
+        padding=1,
+        depth=2,
     ):
         super(EncoderBlock, self).__init__()
         self.in_channels = in_channels
@@ -126,7 +132,13 @@ class DecoderBlock(nn.Module):
 
 
 class Noise2Noise1D(nn.Module):
-    def __init__(self, kernel_size, depth, num_input_features, num_blocks=4):
+    def __init__(
+        self,
+        kernel_size,
+        depth,
+        num_input_features,
+        num_blocks=4,
+    ):
         super(Noise2Noise1D, self).__init__()
 
         self.kernel_size = kernel_size
