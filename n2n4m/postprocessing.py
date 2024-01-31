@@ -5,28 +5,7 @@ from crism_ml.io import load_image, image_shape
 from crism_ml.preprocessing import filter_bad_pixels, remove_spikes_column, replace
 from crism_ml.train import train_model_bland, feat_masks, compute_bland_scores
 from n2n4m.preprocessing import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
-
-
-def convert_coordinates_to_xy(dataframe):
-    if type(dataframe) == pd.Series:
-        dataframe["x"] = dataframe["Coordinates"][0]
-        dataframe["y"] = dataframe["Coordinates"][1]
-        dataframe = dataframe.drop("Coordinates")
-    else:
-        dataframe["x"] = dataframe["Coordinates"].apply(lambda x: x[0])
-        dataframe["y"] = dataframe["Coordinates"].apply(lambda x: x[1])
-        dataframe = dataframe.drop(columns=["Coordinates"])
-    return dataframe
-
-
-def convert_xy_to_coordinates(dataframe):
-    if type(dataframe) == pd.Series:
-        dataframe["Coordinates"] = [dataframe["x"], dataframe["y"]]
-        dataframe = dataframe.drop(index=["x", "y"])
-    else:
-        dataframe["Coordinates"] = dataframe.apply(lambda x: [x["x"], x["y"]], axis=1)
-        dataframe = dataframe.drop(columns=["x", "y"])
-    return dataframe
+from n2n4m.utils import convert_coordinates_to_xy, convert_xy_to_coordinates
 
 
 def load_image_from_shortcode(
