@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import warnings
 from sklearn.metrics import r2_score
+import sklearn
 import numpy as np
 import torch
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
@@ -34,7 +35,8 @@ def load_dataset(path: str) -> pd.DataFrame:
 
 
 def expand_dataset(
-    dataset: pd.DataFrame, bands: tuple = ALL_WAVELENGTHS
+    dataset: pd.DataFrame,
+    bands: tuple = ALL_WAVELENGTHS,
 ) -> pd.DataFrame:
     """
     Convert the spectrum column into a column per wavelength value.
@@ -197,7 +199,7 @@ def get_linear_interp_spectra(
     lower_bound: float = 1.91487,
     upper_bound: float = 2.08645,
     wavelengths: tuple = PLEBANI_WAVELENGTHS,
-)-> np.ndarray:
+) -> np.ndarray:
     """
     Get the linear interpolation of the spectra between the lower and upper bounds.
 
@@ -239,7 +241,7 @@ def detect_artefact(
     upper_bound: float = 2.08645,
     wavelengths: tuple = PLEBANI_WAVELENGTHS,
     threshold: float = 0.6,
-):
+) -> bool:
     """
     Detect whether an artefact is present in the spectra between the lower and upper bounds.
 
@@ -269,24 +271,28 @@ def detect_artefact(
         linear_interp,
         spectra[wavelengths.index(lower_bound) : wavelengths.index(upper_bound)],
     )
-    if r2 < threshold:
+    if float(r2) < threshold:
         return True
     else:
         return False
 
 
 def impute_artefacts(
-    spectra, lower_bound=1.91487, upper_bound=2.08645, wavelengths=PLEBANI_WAVELENGTHS
-):
+    dataset: pd.DataFrame,
+    lower_bound: float = 1.91487,
+    upper_bound: float = 2.08645,
+    wavelengths: tuple = PLEBANI_WAVELENGTHS,
+    threshold: float = 0.6,
+) -> pd.DataFrame:
     """
-    Impute the artefacts in the spectra between the lower and upper bounds.
+    Identify and impute the artefacts in the spectra between the lower and upper bounds.
     Uses the mean of spectra with no artefacts in the same mineral class to impute the artefacts.
-    Fits the residual of the mean when removed from the continuum to the artefact spectra continuum.
+    Fits the residual of the mean when removed from the continuumz, to the artefact spectra continuum.
 
     Parameters
     ----------
-    spectra : pd.DataFrame
-        The spectra to interpolate.
+    dataset : pd.DataFrame
+        The dataset to find and impute any local artefacts.
     lower_bound : float
         The lower bound wavelength.
         Default: 1.91487
@@ -302,70 +308,80 @@ def impute_artefacts(
     spectra_copy : pd.DataFrame
         The interpolated spectra.
     """
-    spectra["Pixel_Class"] = spectra["Pixel_Class"].apply(lambda x: x[0])
-    spectra_copy = spectra.copy(deep=True)
+    dataset = utils.label_list_to_string(dataset)
+    dataset_copy = dataset.copy(deep=True)
+    band_column_headers = [str(wavelength) for wavelength in wavelengths]
     lower_bound_idx = wavelengths.index(lower_bound)
     upper_bound_idx = wavelengths.index(upper_bound)
-    band_column_headers = [str(wavelength) for wavelength in wavelengths]
-    for mineral in spectra["Pixel_Class"].unique():
-        print(f"Mineral class: {mineral}")
-        mineral_spectra = spectra[spectra["Pixel_Class"] == mineral]
-        mineral_spectra = mineral_spectra.drop(
-            columns=["Pixel_Class", "Image_Name", "Coordinates"]
-        ).values
-        artefact_mask = [detect_artefact(spectra) for spectra in mineral_spectra]
-        if sum(artefact_mask) == 0:
-            warnings.warn(f"No artefacts detected in {mineral} spectra, skipping.")
+
+    # Loop throuhg all spectra by class
+    for mineral in dataset["Pixel_Class"].unique():
+        mineral_dataset = dataset[dataset["Pixel_Class"] == mineral]
+        mineral_spectra = mineral_dataset.drop(columns=LABEL_COLS).values
+        artefact_mask = [
+            detect_artefact(
+                spectra,
+                lower_bound=lower_bound,
+                upper_bound=upper_bound,
+                wavelengths=wavelengths,
+                threshold=threshold,
+            )
+            for spectra in mineral_spectra
+        ]
+
+        # Check if there are no artefacts or only artefacts, then skip this mineral
+        if sum(artefact_mask) == 0 or sum(artefact_mask) == len(artefact_mask):
             continue
-        if sum(artefact_mask) == len(artefact_mask):
-            warnings.warn(f"All {mineral} spectra contain artefacts, skipping.")
-            continue
-        print(
-            f"Number of spectra: {len(artefact_mask)}\nNumber of artefacts: {sum(artefact_mask)}\nPercentage of artefacts: {sum(artefact_mask)/len(artefact_mask)}"
-        )
+
         no_artefact_mineral_spectra = mineral_spectra[~np.array(artefact_mask)]
         average_no_artefact_mineral = np.mean(no_artefact_mineral_spectra, axis=0)
-        no_artefact_linear_interp = np.poly1d(
-            np.polyfit(
-                wavelengths[lower_bound_idx:upper_bound_idx],
-                average_no_artefact_mineral[lower_bound_idx:upper_bound_idx],
-                1,
-            )
-        )(wavelengths[lower_bound_idx:upper_bound_idx])
+        no_artefact_linear_interp = get_linear_interp_spectra(
+            average_no_artefact_mineral,
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
+            wavelengths=wavelengths,
+        )
+
         no_artefact_residual = (
             average_no_artefact_mineral[lower_bound_idx:upper_bound_idx]
             - no_artefact_linear_interp
         )
+
+        # Loop through all spectra in the mineral class
         for idx, spectrum_mask in enumerate(zip(mineral_spectra, artefact_mask)):
             spectrum = spectrum_mask[0]
             mask = spectrum_mask[1]
-            if mask:
-                artefact_linear_interp = np.poly1d(
-                    np.polyfit(
-                        wavelengths[lower_bound_idx:upper_bound_idx],
-                        spectrum[lower_bound_idx:upper_bound_idx],
-                        1,
-                    )
-                )(wavelengths[lower_bound_idx:upper_bound_idx])
+            if mask:  # Only replace if there is an artefact
+                artefact_linear_interp = get_linear_interp_spectra(
+                    spectrum,
+                    lower_bound=lower_bound,
+                    upper_bound=upper_bound,
+                    wavelengths=wavelengths,
+                )
+
                 mineral_spectra[idx, lower_bound_idx:upper_bound_idx] = (
                     artefact_linear_interp + no_artefact_residual
                 )
 
-        spectra_copy.loc[
-            spectra_copy["Pixel_Class"] == mineral, band_column_headers
+        dataset_copy.loc[
+            dataset_copy["Pixel_Class"] == mineral, band_column_headers
         ] = mineral_spectra
-    spectra_copy["Pixel_Class"] = spectra_copy["Pixel_Class"].apply(lambda x: [x])
-    return spectra_copy
+
+    dataset_copy = utils.label_string_to_list(dataset_copy)
+    return dataset_copy
 
 
-def generate_noisy_pixels(dataset, random_seed=False):
+def generate_noisy_pixels(
+    dataset: pd.DataFrame, random_seed: int = False
+) -> pd.DataFrame:
     """
-    Generate the noisy pixels for the dataset.
+    Generate noisy pixels for the dataset.
 
     Parameters
     ----------
     dataset : pd.DataFrame
         The dataset to generate the noisy pixels for.
+        Must only contain the spectra. No labels or anciliary information.
     random_seed : int
         The random seed to use for the noise generation. If False, no random seed is used.
         Default False.
@@ -393,7 +409,9 @@ def generate_noisy_pixels(dataset, random_seed=False):
     return dataset
 
 
-def train_test_split(dataset, bland_pixels=False):
+def train_test_split(
+    dataset: pd.DataFrame, bland_pixels: bool = False
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Split the dataset into a training set and testing set.
     Sets are not random, but designed to ensure a good split of classes,
@@ -436,7 +454,9 @@ def train_test_split(dataset, bland_pixels=False):
     return train_set, test_set
 
 
-def train_validation_split(dataset, bland_pixels=False):
+def train_validation_split(
+    dataset: pd.DataFrame, bland_pixels: bool = False
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Split the train set into a train set and validation set.
     Sets are not random, but designed to ensure a good split of classes,
@@ -475,9 +495,12 @@ def train_validation_split(dataset, bland_pixels=False):
     return train_set, validation_set
 
 
-def split_features_targets_anciliary(dataset):
+def split_features_targets_anciliary(
+    dataset: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Function to split a dataset into features, targets, and anciliary information (image name, pixel coordinates, class label)
+    Features and targets split by "noisy" in column name = feature.
 
     Parameters
     ----------
@@ -493,14 +516,19 @@ def split_features_targets_anciliary(dataset):
     anciliary_data : pd.DataFrame
         The anciliary information of the dataset.
     """
-    ancillary_data = dataset[["Image_Name", "Coordinates", "Pixel_Class"]]
-    dataset = dataset.drop(columns=["Image_Name", "Coordinates", "Pixel_Class"])
-    features = dataset.iloc[:, int(len(dataset.columns) / 2) :]
-    targets = dataset.iloc[:, : int(len(dataset.columns) / 2)]
+    ancillary_data = dataset[LABEL_COLS]
+    dataset = dataset.drop(columns=LABEL_COLS)
+    noisy_columns = [col for col in dataset.columns if "noisy" in col]
+    features = dataset.loc[:, noisy_columns]
+    targets = dataset.iloc[:, ~dataset.columns.isin(noisy_columns)]
     return features, targets, ancillary_data
 
 
-def standardise(dataset, method="StandardScaler", scaler=None):
+def standardise(
+    dataset: pd.DataFrame,
+    method: str = "StandardScaler",
+    scaler: sklearn.preprocessing._data = None,
+) -> tuple[pd.DataFrame, sklearn.preprocessing._data]:
     """
     Standardise a dataset. If a scaler is given, the dataset is transformed using the given scaler, else new scaler is fitted and returned.
     Supported methods include:
@@ -541,7 +569,10 @@ def standardise(dataset, method="StandardScaler", scaler=None):
     return scaled_dataset, scaler
 
 
-def inverse_standardise(dataset, scaler):
+def inverse_standardise(
+    dataset,
+    scaler: sklearn.preprocessing._data,
+):
     """
     Inverse standardise a dataset using the given scaler.
 
