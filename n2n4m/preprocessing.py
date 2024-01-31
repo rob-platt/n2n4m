@@ -7,7 +7,7 @@ import torch
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
-from n2n4m.utils import label_list_to_string, label_string_to_list
+import n2n4m.utils as utils
 
 LABEL_COLS = ["Image_Name", "Pixel_Class", "Coordinates"]
 
@@ -33,7 +33,9 @@ def load_dataset(path: str) -> pd.DataFrame:
     return pd.read_json(path, dtype={"Image_Name": "string"})
 
 
-def expand_dataset(dataset: pd.DataFrame, bands=ALL_WAVELENGTHS) -> pd.DataFrame:
+def expand_dataset(
+    dataset: pd.DataFrame, bands: tuple = ALL_WAVELENGTHS
+) -> pd.DataFrame:
     """
     Convert the spectrum column into a column per wavelength value.
 
@@ -42,7 +44,7 @@ def expand_dataset(dataset: pd.DataFrame, bands=ALL_WAVELENGTHS) -> pd.DataFrame
     dataset : pd.DataFrame
         The dataset to expand.
         Requires each spectra to be in a list under the column "Spectrum".
-    bands : list
+    bands : tuple
         The centrepoint wavelengths of the bands to expand the dataset to.
         Must match length of spectra.
         Default: wavelengths.ALL_WAVELENGTHS
@@ -63,7 +65,7 @@ def expand_dataset(dataset: pd.DataFrame, bands=ALL_WAVELENGTHS) -> pd.DataFrame
     return dataset
 
 
-def drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS):
+def drop_bad_bands(dataset: pd.DataFrame, bands_to_keep: tuple = PLEBANI_WAVELENGTHS):
     """
     Drop any bands with consistently bad pixels.
     Default drops 1.00135, 1.0079, > 3.9167, and between 2.66816 and 2.80697 inclusive
@@ -71,7 +73,7 @@ def drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS):
     ----------
     dataset : pd.DataFrame
         The dataset to drop the bad wavelengths from.
-    bands_to_keep : list
+    bands_to_keep : tuple
         The wavelengths to keep.
 
     Returns
@@ -89,7 +91,7 @@ def drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS):
     return dataset
 
 
-def detect_bad_values(dataset: pd.DataFrame, threshold=1) -> bool:
+def detect_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> bool:
     """
     Detect whether any bad values are present in the numerical data of passed dataset.
 
@@ -97,9 +99,9 @@ def detect_bad_values(dataset: pd.DataFrame, threshold=1) -> bool:
     ----------
     dataset : pd.DataFrame
         The dataset to detect bad values in.
-    threshold : int
+    threshold : float
         The threshold to use to detect bad values.
-        Default: 1
+        Default: 1.
 
     Returns
     -------
@@ -115,7 +117,7 @@ def detect_bad_values(dataset: pd.DataFrame, threshold=1) -> bool:
         return False
 
 
-def impute_column_mean(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
+def impute_column_mean(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataFrame:
     """
     Impute any bad values in the dataset with the mean of the column.
     Dataset modified in place.
@@ -124,9 +126,9 @@ def impute_column_mean(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
     ----------
     dataset : pd.DataFrame
         The dataset to impute the bad values in.
-    threshold : int
+    threshold : float
         The threshold to use to detect bad values.
-        Default: 1
+        Default: 1.
 
     Returns
     -------
@@ -141,7 +143,7 @@ def impute_column_mean(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
     return dataset
 
 
-def impute_bad_values(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
+def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataFrame:
     """
     Impute any bad values in the dataset.
     Dataset modified in place.
@@ -155,7 +157,7 @@ def impute_bad_values(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
     ----------
     dataset : pd.DataFrame
         The dataset to impute the bad values in.
-    threshold : int
+    threshold : float
         The threshold to use to detect bad values.
         Default: 1
 
@@ -164,7 +166,7 @@ def impute_bad_values(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
     dataset : pd.DataFrame
         The dataset with the bad values imputed.
     """
-    dataset = label_list_to_string(dataset)
+    dataset = utils.label_list_to_string(dataset)
     for image_name in dataset["Image_Name"].unique():
         for pixel_class in dataset[dataset["Image_Name"] == image_name][
             "Pixel_Class"
@@ -186,19 +188,22 @@ def impute_bad_values(dataset: pd.DataFrame, threshold=1) -> pd.DataFrame:
     if detect_bad_values(dataset):
         dataset.update(impute_column_mean(dataset, threshold=threshold))
 
-    dataset = label_string_to_list(dataset)
+    dataset = utils.label_string_to_list(dataset)
     return dataset
 
 
 def get_linear_interp_spectra(
-    spectra, lower_bound=1.91487, upper_bound=2.08645, wavelengths=PLEBANI_WAVELENGTHS
-):
+    spectra: np.ndarray,
+    lower_bound: float = 1.91487,
+    upper_bound: float = 2.08645,
+    wavelengths: tuple = PLEBANI_WAVELENGTHS,
+)-> np.ndarray:
     """
     Get the linear interpolation of the spectra between the lower and upper bounds.
 
     Parameters
     ----------
-    spectra : np.array
+    spectra : np.ndarray
         The spectra to interpolate.
     lower_bound : float
         The lower bound wavelength.
@@ -212,8 +217,8 @@ def get_linear_interp_spectra(
 
     Returns
     -------
-    np.array
-        The interpolated spectra.
+    linear_interp : np.ndarray
+        The linear interpolation of the spectra between the lower and upper bounds.
     """
     lower_bound_idx = wavelengths.index(lower_bound)
     upper_bound_idx = wavelengths.index(upper_bound)
@@ -229,7 +234,11 @@ def get_linear_interp_spectra(
 
 
 def detect_artefact(
-    spectra, lower_bound=1.91487, upper_bound=2.08645, wavelengths=PLEBANI_WAVELENGTHS
+    spectra: np.ndarray,
+    lower_bound: float = 1.91487,
+    upper_bound: float = 2.08645,
+    wavelengths: tuple = PLEBANI_WAVELENGTHS,
+    threshold: float = 0.6,
 ):
     """
     Detect whether an artefact is present in the spectra between the lower and upper bounds.
@@ -260,7 +269,7 @@ def detect_artefact(
         linear_interp,
         spectra[wavelengths.index(lower_bound) : wavelengths.index(upper_bound)],
     )
-    if r2 < 0.6:
+    if r2 < threshold:
         return True
     else:
         return False
