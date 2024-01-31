@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+import numpy as np
 
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 import n2n4m.preprocessing as preprocessing
@@ -14,6 +15,7 @@ def raw_data():
 def test_load_dataset(raw_data):
     sample_data_load = preprocessing.load_dataset("tests/sample_data_v2.json")
     assert sample_data_load.equals(raw_data)
+    assert type(sample_data_load) == pd.DataFrame
     pytest.raises(FileNotFoundError, preprocessing.load_dataset, "tests/not_a_file.json")
     pytest.raises(ValueError, preprocessing.load_dataset, "tests/test_preprocessing.py")
 
@@ -26,12 +28,14 @@ def expanded_data():
 def test_expand_spectrum(raw_data, expanded_data):
     bands = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     sample_data_expanded = preprocessing.expand_dataset(raw_data, bands=bands)
+    assert type(sample_data_expanded) == pd.DataFrame
     assert len(sample_data_expanded.columns) == len(expanded_data.columns)
     assert len(sample_data_expanded) == len(expanded_data)
 
 def test_drop_bad_bands(expanded_data):
     dummy_good_bands = [2, 3, 4, 5, 6, 7, 8, 9] # bands 0 and 1 are bad in dummy example
     cleaned_data = preprocessing.drop_bad_bands(expanded_data, dummy_good_bands)
+    assert type(cleaned_data) == pd.DataFrame
     assert len(cleaned_data.columns) == len(dummy_good_bands) + len(preprocessing.LABEL_COLS) # extra columns for coordinates, image name, and pixel class
     assert len(cleaned_data) == len(expanded_data) 
     assert all([str(band) in cleaned_data.columns for band in dummy_good_bands])
@@ -67,6 +71,7 @@ def test_impute_column_mean(expanded_data):
     column_names = expanded_data.columns
     imputed_data = preprocessing.impute_column_mean(expanded_data, threshold=1)
     col_name_set = set(column_names+imputed_data.columns) # Ensure no columns were accidentally dropped
+    assert type(imputed_data) == pd.DataFrame
     assert len(col_name_set) == len(column_names)
     assert len(imputed_data) == len(expanded_data)
     assert round(imputed_data.iloc[9]["1"],3) == 0.2
@@ -80,6 +85,7 @@ def test_impute_bad_values(expanded_data):
     column_names = expanded_data.columns
     imputed_data = preprocessing.impute_bad_values(expanded_data, threshold=1)
     col_name_set = set(column_names+imputed_data.columns) # Ensure no columns were accidentally dropped
+    assert type(imputed_data) == pd.DataFrame
     assert len(col_name_set) == len(column_names)
     assert len(imputed_data) == len(expanded_data)
     assert round(imputed_data.iloc[0]["0"],3) == 0.2 # Same image, same class
@@ -90,8 +96,73 @@ def test_impute_bad_values(expanded_data):
     assert round(imputed_data.iloc[8]["2"],3) == 0.1 # Same image, different class
     assert round(imputed_data.iloc[9]["1"],3) == 0.2 # Different image, different class
 
+def test_get_linear_interp_spectra(expanded_data):
+    bands = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    sample_spectra = expanded_data.iloc[8, 3:].values.astype(float) # Single spectra, only the bands, no labels
+    linear_interp = preprocessing.get_linear_interp_spectra(sample_spectra, lower_bound=0, upper_bound=5, wavelengths=bands)
+    assert type(linear_interp) == np.ndarray
+    assert len(linear_interp) == 5 # 5 bands between 0 and 5
+    assert round(linear_interp[0],3) == 0.42
 
+def test_detect_artefact(expanded_data):
+    bands = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    sample_bad_spectra = expanded_data.iloc[8, 3:].values.astype(float) # Single spectra, only the bands, no labels
+    sample_good_spectra = expanded_data.iloc[1, 3:].values.astype(float)
+    assert preprocessing.detect_artefact(sample_bad_spectra, lower_bound=0, upper_bound=6, wavelengths=bands, threshold=0.5) == True
+    assert preprocessing.detect_artefact(sample_good_spectra, lower_bound=0, upper_bound=6, wavelengths=bands, threshold=0.5) == False
+    assert preprocessing.detect_artefact(sample_bad_spectra, lower_bound=0, upper_bound=6, wavelengths=bands, threshold=0.6) == True # Change boundary threshold
+
+
+def test_impute_artefacts(expanded_data):
+    bands = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    imputed_data = preprocessing.impute_artefacts(expanded_data, lower_bound=0, upper_bound=6, wavelengths=bands, threshold=0.5)
+    assert type(imputed_data) == pd.DataFrame
+    assert imputed_data.shape == expanded_data.shape
+
+
+def test_generate_noisy_pixels(expanded_data):
+    spectra = expanded_data.drop(columns=preprocessing.LABEL_COLS)
+    noisy_data = preprocessing.generate_noisy_pixels(spectra)
+    assert type(noisy_data) == pd.DataFrame
+    assert noisy_data.shape == spectra.shape
 
     
+def test_train_test_split(expanded_data):
+    train, test = preprocessing.train_test_split(expanded_data)
+    assert type(train) == pd.DataFrame
+    assert type(test) == pd.DataFrame
+    assert len(train) + len(test) == len(expanded_data)
+    assert len(train.columns) == len(test.columns) == len(expanded_data.columns)
+    assert "0BABA" in train["Image_Name"].values
+    assert "0BABA" not in test["Image_Name"].values
+    assert "0A053" in test["Image_Name"].values
+    assert "0A053" not in train["Image_Name"].values
+
+    
+def test_train_validation_split(expanded_data):
+    train, validation = preprocessing.train_validation_split(expanded_data)
+    assert type(train) == pd.DataFrame
+    assert type(validation) == pd.DataFrame
+    assert len(train) + len(validation) == len(expanded_data)
+    assert len(train.columns) == len(validation.columns) == len(expanded_data.columns)
+    assert "0BABA" in train["Image_Name"].values
+    assert "0BABA" not in validation["Image_Name"].values
+    assert "093BE" in validation["Image_Name"].values
+    assert "093BE" not in train["Image_Name"].values
 
 
+@pytest.fixture
+def noisy_expanded_data():
+    # Same sample as expanded_data, just bands >=5 relabelled as noisy. Actual spectra are unchanged.
+    data = pd.read_json("tests/sample_data_v2_expanded_noisy.json", dtype={"Image_Name": "string"})
+    return data
+
+def test_split_features_targets_anciliary(noisy_expanded_data):
+    features, targets, anciliary = preprocessing.split_features_targets_anciliary(noisy_expanded_data)
+    assert type(features) == pd.DataFrame
+    assert type(targets) == pd.DataFrame
+    assert type(anciliary) == pd.DataFrame
+    assert len(features.columns) == 5
+    assert len(targets.columns) == 5
+    assert set(anciliary.columns) == set(preprocessing.LABEL_COLS)
+    assert len(features) == len(targets) == len(anciliary) == len(noisy_expanded_data)
