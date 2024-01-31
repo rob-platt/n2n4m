@@ -200,19 +200,19 @@ additional_mineral_features = (
 )
 
 
-def get_mineral_class(mineral_sample):
+def get_mineral_class(mineral_sample: pd.Series) -> str:
     return class_labels[mineral_sample["Pixel_Class"][0]]
 
 
-def get_type_spectra_class(mineral_sample):
+def get_type_spectra_class(mineral_sample: pd.Series) -> str:
     return type_spectra_labels[mineral_sample["Pixel_Class"][0]]
 
 
-def get_type_spectra_name(mineral_sample):
+def get_type_spectra_name(mineral_sample: pd.Series) -> str:
     return type_spectra_names[mineral_sample["Pixel_Class"][0]]
 
 
-def read_type_spectra(filepath):
+def read_type_spectra(filepath: str) -> pd.Series:
     """
     Read the type spectra from the file.
 
@@ -240,7 +240,10 @@ def read_type_spectra(filepath):
     return spectrum
 
 
-def get_type_spectra(mineral_sample, type_spectra_path="../data/type_spectra"):
+def get_type_spectra(
+    mineral_sample: pd.Series,
+    type_spectra_path: str = "../data/type_spectra",
+) -> pd.Series:
     """
     From a mineral sample, load the relevant type spectra.
 
@@ -271,7 +274,7 @@ def get_type_spectra(mineral_sample, type_spectra_path="../data/type_spectra"):
     return read_type_spectra(type_spectra_filepath)
 
 
-def clip_type_spectra(mineral_sample, type_spectra):
+def clip_type_spectra(mineral_sample: pd.Series, type_spectra: pd.Series) -> pd.Series:
     """
     Clip the type spectra to the same wavelengths as the mineral sample.
 
