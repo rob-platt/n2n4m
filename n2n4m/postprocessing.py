@@ -1,31 +1,27 @@
 import pandas as pd
 import numpy as np
 import os
-from crism_ml.io import load_image, image_shape
+import n2n4m.io
+from crism_ml.io import image_shape
 from crism_ml.preprocessing import filter_bad_pixels, remove_spikes_column, replace
 from crism_ml.train import train_model_bland, feat_masks, compute_bland_scores
-from n2n4m.preprocessing import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
+from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.utils import convert_coordinates_to_xy, convert_xy_to_coordinates
 
 
 def load_image_from_shortcode(
-    mineral_sample, data_dir="../data/raw_images", load_all_bands=False
-):
+    mineral_sample: pd.DataFrame,
+    data_dir: str = "../data/raw_images",
+) -> dict:
     """
-    Given a mineral sample from the Plebani dataset, load the image.
-    Uses modified load_image() function from Plebani et al. 2022.
-    https://github.com/Banus/crism_ml/tree/master
-
+    Given a mineral sample from a dataset, load the image.
 
     Parameters
     ----------
     mineral_sample : pd.DataFrame
-        Sample from the Plebani datset, must contain "Image_Name" column.
+        Data sample, must contain "Image_Name" column.
     data_dir : str, optional
         Directory where the raw images are stored. Assumes each image is in a separate folder.
-    load_all_bands : bool, optional
-        Whether to return all bands or only the bands in the Plebani dataset.
-        The default is False.
 
     Returns
     -------
@@ -48,32 +44,24 @@ def load_image_from_shortcode(
             f"Image file not found or multiple files found for shortcode {image_shortcode}."
         )
     image_filename = os.path.join(image_folder, image_filename[0])
-    image = load_image(image_filename)
-
-    if load_all_bands:
-        return image
-
-    band_mask = [
-        True if band in PLEBANI_WAVELENGTHS else False for band in ALL_WAVELENGTHS
-    ]  # Boolean mask of whether each band in the L sensor is included in the Plebani dataset
-    image["IF"] = image["IF"][:, band_mask]
+    image = n2n4m.io.load_image(image_filename)
     return image
 
 
 def calculate_pixel_blandness(
-    image,
-    train_set_dir="/home/rp1818/CRISM_image_de-aging/CRISM/Plebani_Dataset",
-    im_shape=None,
+    image: dict,
+    train_set_dir: str = "/home/rp1818/CRISM_image_de-aging/CRISM/Plebani_Dataset",
+    im_shape: tuple | None = None,
 ):
     """
-    Calculates the blandness of each pixel in an image using the GMM and code from Plebani et al. 2022
+    Calculates the blandness of each pixel in an image using the GMM model from Plebani et al. 2022
     https://github.com/Banus/crism_ml/tree/master
 
     Parameters
     ----------
     image : dict, ndarray
         Contains the spectral data. If dict, must be in format given by crism_ml.io.load_image().
-        If ndarray, must be the spectral data only, in shape (n_spectra, n_bands).S
+        If ndarray, must be the spectral data only, in shape (n_spectra, n_bands).
         Should contain only the 350 channels required by the Plebani model.
     train_set_dir : str
         Path to the directory containing the bland pixel training set.
@@ -100,10 +88,8 @@ def calculate_pixel_blandness(
         train_model_bland(train_set_dir, fin0)
     )
     spectra, bad_pixel_mask = filter_bad_pixels(spectra)
-    print(
-        f"There are {bad_pixel_mask.sum()} bad pixels in the image of {spectra.shape[0]} pixels"
-    )
-    despiked_spectra = remove_spikes_column(  # Remove spikes using a median filter with window size 3, removing spikes larger than 5 std dev. calculated per column
+
+    despiked_spectra = remove_spikes_column(  # Remove spikes using a median filter with window size 3, removing spikes larger than 5 std dev. Calculated per column
         spectra.reshape(*im_shape, -1), size=3, sigma=5
     ).reshape(
         spectra.shape
