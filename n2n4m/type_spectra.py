@@ -95,7 +95,7 @@ type_spectra_names = {  # From Plebani et al. 2022 https://github.com/Banus/cris
     7: "Mg Smectite",
     8: "Prehnite",
     9: "Jarosite",
-    10: "Sepentine",
+    10: "Serpentine",
     11: "Alunite",
     12: "Hydroxylated Fe Sulfate",
     13: "Fe/Ca Carbonate",
@@ -242,7 +242,7 @@ def read_type_spectra(filepath: str) -> pd.Series:
 
 def get_type_spectra(
     mineral_sample: pd.Series,
-    type_spectra_path: str = "../data/type_spectra",
+    type_spectra_dir: str = "../data/type_spectra",
 ) -> pd.Series:
     """
     From a mineral sample, load the relevant type spectra.
@@ -261,16 +261,16 @@ def get_type_spectra(
     spectra : list
         The spectra.
     """
-    if not os.path.isdir(type_spectra_path):
+    if not os.path.isdir(type_spectra_dir):
         raise IOError(
-            f"Directory {type_spectra_path} not found.\nPlease download the type spectra from: https://pds-geosciences.wustl.edu/mro/mro-m-crism-4-typespec-v1/mrocr_8001/data/\n"
+            f"Directory {type_spectra_dir} not found.\nPlease download the type spectra from: https://pds-geosciences.wustl.edu/mro/mro-m-crism-4-typespec-v1/mrocr_8001/data/\n"
             f"Linux command: wget -e robots=off -r --cut-dirs=4 -np -nH https://pds-geosciences.wustl.edu/mro/mro-m-crism-4-typespec-v1/mrocr_8001/data/ -P ../data/type_spectra/"
         )
     if not isinstance(mineral_sample, pd.Series):
         raise TypeError(
             f"The mineral sample must be a pandas series not {type(mineral_sample)}"
         )
-    type_spectra_filepath = f"{type_spectra_path}/crism_typespec_{get_type_spectra_class(mineral_sample)}.tab"
+    type_spectra_filepath = f"{type_spectra_dir}/crism_typespec_{get_type_spectra_class(mineral_sample)}.tab"
     return read_type_spectra(type_spectra_filepath)
 
 
