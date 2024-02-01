@@ -1,8 +1,6 @@
 import os
 import pandas as pd
-import warnings
 from sklearn.metrics import r2_score
-import sklearn
 import numpy as np
 import torch
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
@@ -527,8 +525,8 @@ def split_features_targets_anciliary(
 def standardise(
     dataset: pd.DataFrame,
     method: str = "StandardScaler",
-    scaler: sklearn.preprocessing._data = None,
-) -> tuple[pd.DataFrame, sklearn.preprocessing._data]:
+    scaler: StandardScaler | MinMaxScaler | RobustScaler | None = None,
+) -> tuple[pd.DataFrame, StandardScaler | MinMaxScaler | RobustScaler]:
     """
     Standardise a dataset. If a scaler is given, the dataset is transformed using the given scaler, else new scaler is fitted and returned.
     Supported methods include:
@@ -571,7 +569,7 @@ def standardise(
 
 def inverse_standardise(
     dataset,
-    scaler: sklearn.preprocessing._data,
+    scaler: StandardScaler | MinMaxScaler | RobustScaler,
 ):
     """
     Inverse standardise a dataset using the given scaler.
