@@ -54,7 +54,18 @@ def crism_to_mat(fname: str, flatten: bool = False) -> dict:
 
 
 def load_image(fname: str) -> dict:
-    """Try to load a .mat file and fall back to ENVI if not found."""
+    """Try to load a .mat file and fall back to ENVI if not found.
+    
+    Parameters
+    ----------
+    fname : str
+        Path to file to load.
+
+    Returns
+    -------
+    image : dict
+        Dictionary of image data.
+    """
     try:
         return crism_ml.io.loadmat(fname)
     except (FileNotFoundError, NotImplementedError, ValueError):
