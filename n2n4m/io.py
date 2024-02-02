@@ -4,6 +4,7 @@ from spectral.io import envi, spyfile
 
 import crism_ml.io
 
+NUM_BANDS = 438
 
 def crism_to_mat(fname: str, flatten: bool = False) -> dict:
     """Convert a CRISM ENVI image to a Matlab-like dictionary.
@@ -34,7 +35,7 @@ def crism_to_mat(fname: str, flatten: bool = False) -> dict:
     """
     # pylint: disable=import-outside-toplevel
 
-    band_select = np.arange(0, 438, 1)
+    band_select = np.arange(0, NUM_BANDS, 1)
     fbase, _ = os.path.splitext(fname)
     try:
         img = envi.open(f"{fbase}.hdr")
