@@ -90,6 +90,29 @@ def drop_bad_bands(dataset: pd.DataFrame, bands_to_keep: tuple = PLEBANI_WAVELEN
 
     return dataset
 
+def bad_values_to_nan(dataset: pd.DataFrame, threshold: float = 1.0) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Convert any bad values in the dataset to NaN.
+
+    Parameters
+    ----------
+    dataset : pd.DataFrame
+        The dataset to convert the bad values to NaN in.
+    threshold : float
+        The threshold to use to detect bad values.
+        Default: 1.
+
+    Returns
+    -------
+    data : pd.DataFrame
+        The dataset with the bad values converted to NaN.
+    label_data : pd.DataFrame
+        The label data.
+    """
+    data = dataset.drop(columns=LABEL_COLS)
+    label_data = dataset[LABEL_COLS]
+    data[data > threshold] = np.nan
+    return data, label_data
 
 def detect_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> bool:
     """
@@ -108,9 +131,7 @@ def detect_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> bool:
     bool
         Whether bad values are present in the dataset.
     """
-    data = dataset.drop(columns=LABEL_COLS)
-    label_data = dataset[LABEL_COLS]
-    data[data > threshold] = np.nan
+    data, labels = bad_values_to_nan(dataset, threshold=threshold)
     if data.isna().any().any():
         return True
     else:
@@ -135,9 +156,7 @@ def impute_column_mean(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.Data
     dataset : pd.DataFrame
         The dataset with the bad values imputed.
     """
-    data = dataset.drop(columns=LABEL_COLS)
-    label_data = dataset[LABEL_COLS]
-    data[data > threshold] = np.nan
+    data, label_data = bad_values_to_nan(dataset, threshold=threshold)
     data = data.fillna(data.mean())
     dataset = pd.concat([label_data, data], axis=1)
     return dataset
@@ -149,7 +168,7 @@ def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataF
     Dataset modified in place.
 
     Uses a 3 level strategy:
-    1. If good values are present in the same class in the same image, impute using the mean of that band for those pixels.
+    1. If good values are present in the same mineral class in the same image, impute using the mean of that band for those pixels.
     2. If good values are present in the same image, impute using the mean of that band for those pixels.
     3. If good values are present in the dataset, impute using the mean of that band for those pixels.
 
@@ -176,8 +195,9 @@ def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataF
                 & (dataset["Pixel_Class"] == pixel_class)
             ]
 
-            class_subset = impute_column_mean(class_subset, threshold=threshold)
-            dataset.update(class_subset)
+            if detect_bad_values(class_subset):
+                class_subset = impute_column_mean(class_subset, threshold=threshold)
+                dataset.update(class_subset)
 
         if detect_bad_values(dataset[dataset["Image_Name"] == image_name]):
             dataset.update(
