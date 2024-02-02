@@ -15,8 +15,8 @@ def raw_data():
 
 def test_load_dataset(raw_data: DataFrame):
     sample_data_load = preprocessing.load_dataset("tests/test_preprocessing/sample_data_v2.json")
-    assert sample_data_load.equals(raw_data)
     assert type(sample_data_load) == pd.DataFrame
+    assert sample_data_load.equals(raw_data)
     pytest.raises(FileNotFoundError, preprocessing.load_dataset, "tests/test_preprocessing/not_a_file.json")
     pytest.raises(ValueError, preprocessing.load_dataset, "tests/test_preprocessing/test_preprocessing.py")
 
@@ -30,17 +30,18 @@ def test_expand_spectrum(raw_data: DataFrame, expanded_data: DataFrame):
     bands = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
     sample_data_expanded = preprocessing.expand_dataset(raw_data, bands=bands)
     assert type(sample_data_expanded) == pd.DataFrame
-    assert len(sample_data_expanded.columns) == len(expanded_data.columns)
+    assert set(sample_data_expanded.columns) == set(expanded_data.columns)
     assert len(sample_data_expanded) == len(expanded_data)
 
 def test_drop_bad_bands(expanded_data: DataFrame):
     dummy_good_bands = (2, 3, 4, 5, 6, 7, 8, 9) # bands 0 and 1 are bad in dummy example
+    dummy_bad_bands = [0, 1]
     cleaned_data = preprocessing.drop_bad_bands(expanded_data, dummy_good_bands)
     assert type(cleaned_data) == pd.DataFrame
     assert len(cleaned_data.columns) == len(dummy_good_bands) + len(preprocessing.LABEL_COLS) # extra columns for coordinates, image name, and pixel class
-    assert len(cleaned_data) == len(expanded_data) 
-    assert all([str(band) in cleaned_data.columns for band in dummy_good_bands])
-    assert all([str(band) not in cleaned_data.columns for band in [0, 1]])
+    assert len(cleaned_data) == len(expanded_data) # Check no rows removed
+    assert all([str(band) in cleaned_data.columns for band in dummy_good_bands]) # Check that all good bands present
+    assert all([str(band) not in cleaned_data.columns for band in dummy_bad_bands]) # Check all bad bands removed
 
 def test_detect_bad_values(expanded_data: DataFrame):
     # sample 0 val 0 should be replaced by 0.2 from same image, same class
@@ -75,11 +76,11 @@ def test_impute_column_mean(expanded_data: DataFrame):
     assert type(imputed_data) == pd.DataFrame
     assert len(col_name_set) == len(column_names)
     assert len(imputed_data) == len(expanded_data)
-    assert round(imputed_data.iloc[9]["1"],3) == 0.2
-    assert round(imputed_data.iloc[6]["2"],3) == 0.1
-    assert round(imputed_data.iloc[0]["0"],3) == 0.15
+    assert np.isclose(imputed_data.iloc[9]["1"],0.2)
+    assert np.isclose(imputed_data.iloc[6]["2"],0.1) 
+    assert np.isclose(imputed_data.iloc[0]["0"],0.15)
     imputed_data = preprocessing.impute_column_mean(expanded_data, threshold=0.8)
-    assert round(imputed_data.iloc[4]["9"],3) == 0.2
+    assert np.isclose(imputed_data.iloc[4]["9"], 0.2)
 
 @pytest.mark.filterwarnings('ignore::FutureWarning')
 def test_impute_bad_values(expanded_data: DataFrame):
@@ -89,13 +90,13 @@ def test_impute_bad_values(expanded_data: DataFrame):
     assert type(imputed_data) == pd.DataFrame
     assert len(col_name_set) == len(column_names)
     assert len(imputed_data) == len(expanded_data)
-    assert round(imputed_data.iloc[0]["0"],3) == 0.2 # Same image, same class
-    assert round(imputed_data.iloc[1]["9"],3) == 0.2 # Same image, same class
-    assert round(imputed_data.iloc[4]["5"],3) == 0.1 # Same image, different class
-    assert round(imputed_data.iloc[5]["0"],3) == 0.1 # Same image, same class
-    assert round(imputed_data.iloc[5]["2"],3) == 0.1 # Same image, different class
-    assert round(imputed_data.iloc[8]["2"],3) == 0.1 # Same image, different class
-    assert round(imputed_data.iloc[9]["1"],3) == 0.2 # Different image, different class
+    assert np.isclose(imputed_data.iloc[0]["0"], 0.2) # Same image, same class
+    assert np.isclose(imputed_data.iloc[1]["9"], 0.2) # Same image, same class
+    assert np.isclose(imputed_data.iloc[4]["5"], 0.1) # Same image, different class
+    assert np.isclose(imputed_data.iloc[5]["0"], 0.1) # Same image, same class
+    assert np.isclose(imputed_data.iloc[5]["2"], 0.1) # Same image, different class
+    assert np.isclose(imputed_data.iloc[8]["2"], 0.1) # Same image, different class
+    assert np.isclose(imputed_data.iloc[9]["1"], 0.2) # Different image, different class
 
 def test_get_linear_interp_spectra(expanded_data: DataFrame):
     bands = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
