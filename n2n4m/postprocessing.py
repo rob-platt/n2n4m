@@ -49,40 +49,38 @@ def load_image_from_shortcode(
 
 
 def calculate_pixel_blandness(
-    image: dict,
-    train_set_dir: str = "/home/rp1818/CRISM_image_de-aging/CRISM/Plebani_Dataset",
-    im_shape: tuple | None = None,
-):
+    spectra: np.ndarray,
+    im_shape: tuple,
+    train_set_dir: str = "data",
+) -> np.ndarray:
     """
     Calculates the blandness of each pixel in an image using the GMM model from Plebani et al. 2022
     https://github.com/Banus/crism_ml/tree/master
 
     Parameters
     ----------
-    image : dict, ndarray
-        Contains the spectral data. If dict, must be in format given by crism_ml.io.load_image().
+    image : ndarray
+        Contains the spectral data.
         If ndarray, must be the spectral data only, in shape (n_spectra, n_bands).
         Should contain only the 350 channels required by the Plebani model.
+    im_shape : tuple
+        The shape of the image.
     train_set_dir : str
         Path to the directory containing the bland pixel training set.
-    im_shape : tuple, optional
-        The shape of the image. Only required if image is a numpy array.
+        Default is "data".
 
     Returns
     -------
     blandness : np.ndarray
         Array of blandness values for each pixel in the image in shape (n_rows, n_cols).
     """
-    if type(image) == dict:
-        spectra = image["IF"]
-        im_shape = image_shape(image)
-    elif type(image) == np.ndarray:
-        if im_shape is None:
-            raise ValueError("If image is a numpy array, im_shape must be provided.")
-        spectra = image
-    else:
-        raise TypeError(f"Image must be a dictionary or numpy array, not {type(image)}")
-
+    # Need these checks as Plebani functions will silent fail otherwise.
+    if type(spectra) != np.ndarray:
+        raise TypeError(f"spectra must be a dictionary or numpy array, not {type(spectra)}")
+    if spectra.shape[1] != 350: 
+        raise ValueError(
+            f"spectra must have 350 bands, not {spectra.shape[1]}. Use the PLEBANI_WAVELENGTHS constant to filter the bands."
+        )
     fin0, fin = feat_masks()  # fin0 for bland pixels, fin for non-bland pixels
     bland_model = (  # Train bland model using the unratioed bland pixel dataset
         train_model_bland(train_set_dir, fin0)
