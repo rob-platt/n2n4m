@@ -138,7 +138,9 @@ def band_depth_calculation(
     return band_depth
 
 
-def hyd_femg_clay_index_calculation(spectra, wavelengths):
+def hyd_femg_clay_index_calculation(
+    spectra: np.ndarray, wavelengths: tuple
+) -> np.ndarray:
     """
     Calculate the summary parameter Hydrated Fe/Mg Clay Index across an image.
     Index from [1].
@@ -202,10 +204,10 @@ def hyd_femg_clay_index_calculation(spectra, wavelengths):
     return femg_clays
 
 
-def d2300_calculation(spectra, wavelengths):
+def d2300_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     """
     Calculate the dropoff at 2300nm across an image.
-    Highlights Mg,Fe-OH minerals, as well as Mg-Carbonates, and CO2 ice.
+    Highlights Mg,Fe-OH minerals, as well as Mg-Carbonates, and CO2 ice [1].
 
     Parameters
     ----------
@@ -221,6 +223,13 @@ def d2300_calculation(spectra, wavelengths):
     d2300 : np.ndarray
         Dropoff at 2300nm values for each spectra.
         Shape (n_spectra,)
+
+    References
+    ----------
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al. 
+    Revised CRISM spectral parameters and summary products based on the currently 
+    detected mineral diversity on Mars. 
+    Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     d2300 = np.zeros(spectra.shape[0])
 
@@ -248,10 +257,10 @@ def d2300_calculation(spectra, wavelengths):
     return d2300
 
 
-def bd1750_calculation(spectra, wavelengths):
+def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     """
     Calculate the summary parameter BD1750 across an image.
-    BD1750 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum.
+    BD1750 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
 
     Parameters
     ----------
@@ -267,6 +276,13 @@ def bd1750_calculation(spectra, wavelengths):
     bd1750 : np.ndarray
         BD1750 values for each spectra.
         Shape (n_spectra,)
+
+    References
+    ----------
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al. 
+    Revised CRISM spectral parameters and summary products based on the currently 
+    detected mineral diversity on Mars. 
+    Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     bd1750 = np.zeros(spectra.shape[0])
 
@@ -278,7 +294,32 @@ def bd1750_calculation(spectra, wavelengths):
     return bd1750
 
 
-def bultel_bd175(spectra, wavelengths):
+def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
+    """Calculate hte BD175 summary parameter across an image.
+    BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum.
+    BD175 from [1].
+
+    Parameters
+    ----------
+    spectra : np.ndarray
+        Spectra to calculate BD175 for.
+        Shape (n_spectra, n_wavelengths)
+    wavelengths : tuple
+        Wavelengths corresponding to spectra.
+        Shape (n_wavelengths,)
+
+    Returns
+    -------
+    bd175 : np.ndarray
+        BD175 values for each spectra.
+        Shape (n_spectra,)
+
+    References
+    ----------
+    1. Bultel B, Quantin C, Lozac'h L. Description of CoTCAT (Complement to CRISM Analysis Toolkit).
+    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing. 
+    2015 Jun;8(6):3039-49.
+    """
 
     bd175 = np.ones(spectra.shape[0])
     lambda_c_1_idx = wavelengths.index(1.75009)
