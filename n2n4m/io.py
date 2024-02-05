@@ -56,6 +56,8 @@ def crism_to_mat(fname: str, flatten: bool = False) -> dict:
 
 def load_image(fname: str) -> dict:
     """Try to load a .mat file and fall back to ENVI if not found.
+    Modified from https://github.com/Banus/crism_ml/blob/master/crism_ml/io.py
+    Now uses n2n4m.io.crism_to_mat instead of crism_ml.io.crism_to_mat.
     
     Parameters
     ----------
