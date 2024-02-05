@@ -226,9 +226,9 @@ def d2300_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
 
     References
     ----------
-    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al. 
-    Revised CRISM spectral parameters and summary products based on the currently 
-    detected mineral diversity on Mars. 
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al.
+    Revised CRISM spectral parameters and summary products based on the currently
+    detected mineral diversity on Mars.
     Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     d2300 = np.zeros(spectra.shape[0])
@@ -280,9 +280,9 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
 
     References
     ----------
-    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al. 
-    Revised CRISM spectral parameters and summary products based on the currently 
-    detected mineral diversity on Mars. 
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al.
+    Revised CRISM spectral parameters and summary products based on the currently
+    detected mineral diversity on Mars.
     Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     bd1750 = np.zeros(spectra.shape[0])
@@ -318,7 +318,7 @@ def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray
     References
     ----------
     1. Bultel B, Quantin C, Lozac'h L. Description of CoTCAT (Complement to CRISM Analysis Toolkit).
-    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing. 
+    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing.
     2015 Jun;8(6):3039-49.
     """
 
