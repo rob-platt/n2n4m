@@ -1,5 +1,8 @@
 __pycache__
 
-type_spectra/
-plebani_data/
+*.mat
 *.json
+*.img
+*.lbl
+*.tab
+*.hdr
