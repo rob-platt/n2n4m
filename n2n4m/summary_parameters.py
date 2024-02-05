@@ -24,9 +24,11 @@ def wavelength_weights(short_wavelength: float, center_wavelength: float, long_w
     a = 1 - b
     return a, b
 
-def interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_ref,):
+def interpolated_center_wavelength_reflectance(short_ref: np.ndarray, bd_wavelengths: tuple, long_ref: np.ndarray,) -> np.ndarray:
     """
-    Internal function to calculate the centre wavelength reflectance of spectra.
+    Calculate the centre wavelength reflectance of spectra. 
+    Weighted average of short and long wavelength reflectance values, i.e. linear interpolation.
+    Weight determined by distance from centre wavelength.
 
     Parameters
     ----------
@@ -39,20 +41,26 @@ def interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_r
     long_ref : np.ndarray
         Median reflectance of kernel centred at long wavelength.
         Shape (n_spectra,)
+
+    Returns
+    -------
+    interpolated_center_ref : np.ndarray
+        Interpolated centre wavelength reflectance.
+        Shape (n_spectra,)
     """
     a, b = wavelength_weights(bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2])
     return (a*short_ref + b*long_ref)
 
-def band_depth_calculation(spectra, all_wavelengths, bd_wavelengths, kernel_sizes):
+def band_depth_calculation(spectra: np.ndarray, all_wavelengths: tuple, bd_wavelengths: tuple, kernel_sizes: tuple) -> np.ndarray:
     """
-    Internal method to calculate the band depth for a given set of wavelengths.
+    Calculate the band depth for a given set of wavelengths.
 
     Parameters
     ----------
     spectra : np.ndarray
         Spectra to calculate band depth for. 
         Shape (n_spectra, n_wavelengths)
-    all_wavelengths : np.ndarray
+    all_wavelengths : tuple
         Wavelengths corresponding to spectra.
         Shape (n_wavelengths,)
     bd_wavelengths : tuple
@@ -76,11 +84,11 @@ def band_depth_calculation(spectra, all_wavelengths, bd_wavelengths, kernel_size
     center_ref = np.zeros(spectra.shape[0])
     long_ref = np.zeros(spectra.shape[0])
 
-    kernel_sizes = [kernel_size//2 for kernel_size in kernel_sizes]
+    half_kernel_sizes = [kernel_size//2 for kernel_size in kernel_sizes]
 
-    short_ref = np.median(spectra[:, all_wavelengths.index(short_wavelength)-kernel_sizes[0]:all_wavelengths.index(short_wavelength)+kernel_sizes[0]+1], axis=1)
-    center_ref = np.median(spectra[:, all_wavelengths.index(center_wavelength)-kernel_sizes[1]:all_wavelengths.index(center_wavelength)+kernel_sizes[1]+1], axis=1)
-    long_ref = np.median(spectra[:, all_wavelengths.index(long_wavelength)-kernel_sizes[2]:all_wavelengths.index(long_wavelength)+kernel_sizes[2]+1], axis=1)
+    short_ref = np.median(spectra[:, all_wavelengths.index(short_wavelength)-half_kernel_sizes[0]:all_wavelengths.index(short_wavelength)+half_kernel_sizes[0]+1], axis=1)
+    center_ref = np.median(spectra[:, all_wavelengths.index(center_wavelength)-half_kernel_sizes[1]:all_wavelengths.index(center_wavelength)+half_kernel_sizes[1]+1], axis=1)
+    long_ref = np.median(spectra[:, all_wavelengths.index(long_wavelength)-half_kernel_sizes[2]:all_wavelengths.index(long_wavelength)+half_kernel_sizes[2]+1], axis=1)
 
     interpolated_center_ref = interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_ref)
     band_depth = center_ref / interpolated_center_ref
@@ -96,7 +104,7 @@ def hyd_femg_clay_index_calculation(spectra, wavelengths):
     spectra : np.ndarray
         Spectra to calculate Hydrated Fe/Mg Clay Index for. 
         Shape (n_spectra, n_wavelengths)
-    wavelengths : np.ndarray
+    wavelengths : tuple
         Wavelengths corresponding to spectra.
         Shape (n_wavelengths,)
     
