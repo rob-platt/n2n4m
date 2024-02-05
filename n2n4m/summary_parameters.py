@@ -1,14 +1,30 @@
 import numpy as np
 
-def __wavelength_weights(short_wavelength, center_wavelength, long_wavelength):
+def wavelength_weights(short_wavelength: float, center_wavelength: float, long_wavelength: float) -> tuple[float, float]:
     """
-    Internal function to calculate the wavelength weights for a given wavelength range.
+    Calculate the wavelength weights for a given wavelength range.
+
+    Parameters
+    ----------
+    short_wavelength : float
+        Short wavelength.
+    center_wavelength : float
+        Center wavelength.
+    long_wavelength : float
+        Long wavelength.
+
+    Returns
+    -------
+    a : float
+        Weight for short wavelength.
+    b : float
+        Weight for long wavelength.
     """
     b = (center_wavelength - short_wavelength)/(long_wavelength - short_wavelength)
     a = 1 - b
     return a, b
 
-def __interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_ref,):
+def interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_ref,):
     """
     Internal function to calculate the centre wavelength reflectance of spectra.
 
@@ -24,10 +40,10 @@ def __interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long
         Median reflectance of kernel centred at long wavelength.
         Shape (n_spectra,)
     """
-    a, b = __wavelength_weights(bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2])
+    a, b = wavelength_weights(bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2])
     return (a*short_ref + b*long_ref)
 
-def __band_depth_calculation(spectra, all_wavelengths, bd_wavelengths, kernel_sizes):
+def band_depth_calculation(spectra, all_wavelengths, bd_wavelengths, kernel_sizes):
     """
     Internal method to calculate the band depth for a given set of wavelengths.
 
@@ -66,7 +82,7 @@ def __band_depth_calculation(spectra, all_wavelengths, bd_wavelengths, kernel_si
     center_ref = np.median(spectra[:, all_wavelengths.index(center_wavelength)-kernel_sizes[1]:all_wavelengths.index(center_wavelength)+kernel_sizes[1]+1], axis=1)
     long_ref = np.median(spectra[:, all_wavelengths.index(long_wavelength)-kernel_sizes[2]:all_wavelengths.index(long_wavelength)+kernel_sizes[2]+1], axis=1)
 
-    interpolated_center_ref = __interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_ref)
+    interpolated_center_ref = interpolated_center_wavelength_reflectance(short_ref, bd_wavelengths, long_ref)
     band_depth = center_ref / interpolated_center_ref
     return band_depth
 
@@ -100,19 +116,19 @@ def hyd_femg_clay_index_calculation(spectra, wavelengths):
 
     femg_clays = np.zeros(spectra.shape[0])
 
-    bd14 = 1 - __band_depth_calculation(spectra, wavelengths, (1.33578, 1.41459, 1.55264), (5, 3, 5))
+    bd14 = 1 - band_depth_calculation(spectra, wavelengths, (1.33578, 1.41459, 1.55264), (5, 3, 5))
     bd14[bd14 < 0] = 0
-    bd19 = 1 - __band_depth_calculation(spectra, wavelengths, (1.86212, 1.92146, 2.07985), (5, 5, 5))
+    bd19 = 1 - band_depth_calculation(spectra, wavelengths, (1.86212, 1.92146, 2.07985), (5, 5, 5))
     bd19[bd19 < 0] = 0
-    bd229 = 1 - __band_depth_calculation(spectra, wavelengths, (2.15251, 2.28472, 2.34426), (3, 5, 3))
+    bd229 = 1 - band_depth_calculation(spectra, wavelengths, (2.15251, 2.28472, 2.34426), (3, 5, 3))
     bd229[bd229 < 0] = 0
-    bd231 = 1 - __band_depth_calculation(spectra, wavelengths, (2.15251, 2.30456, 2.34426), (3, 3, 3))
+    bd231 = 1 - band_depth_calculation(spectra, wavelengths, (2.15251, 2.30456, 2.34426), (3, 3, 3))
     bd231[bd231 < 0] = 0
-    bd232 = 1 - __band_depth_calculation(spectra, wavelengths, (2.15251, 2.32441, 2.34426), (3, 3, 3))
+    bd232 = 1 - band_depth_calculation(spectra, wavelengths, (2.15251, 2.32441, 2.34426), (3, 3, 3))
     bd232[bd232 < 0] = 0
-    bd238 = 1 - __band_depth_calculation(spectra, wavelengths, (2.34426, 2.38396, 2.4303), (3, 3, 3))
+    bd238 = 1 - band_depth_calculation(spectra, wavelengths, (2.34426, 2.38396, 2.4303), (3, 3, 3))
     bd238[bd238 < 0] = 0
-    bd240 = 1 - __band_depth_calculation(spectra, wavelengths, (2.34426, 2.3972, 2.4303), (3, 3, 3))
+    bd240 = 1 - band_depth_calculation(spectra, wavelengths, (2.34426, 2.3972, 2.4303), (3, 3, 3))
     bd240[bd240 < 0] = 0
 
     femg_clays = bd14 + bd19 + bd229 + bd231 + bd232 + bd238 + bd240
@@ -143,12 +159,12 @@ def d2300_calculation(spectra, wavelengths):
     d2300 = np.zeros(spectra.shape[0])
 
 
-    bd2290 = __band_depth_calculation(spectra, wavelengths, (1.81598, 2.30456, 2.52951), (5, 3, 5))
-    bd2320 = __band_depth_calculation(spectra, wavelengths, (1.81598, 2.32441, 2.52951), (5, 3, 5))
-    bd2330 = __band_depth_calculation(spectra, wavelengths, (1.81598, 2.23182, 2.52951), (5, 3, 5))
-    bd2120 = __band_depth_calculation(spectra, wavelengths, (1.81598, 2.11948, 2.52951), (5, 5, 5))
-    bd2170 = __band_depth_calculation(spectra, wavelengths, (1.81598, 2.17233, 2.52951), (5, 5, 5))
-    bd2210 = __band_depth_calculation(spectra, wavelengths, (1.81598, 2.21199, 2.52951), (5, 5, 5))
+    bd2290 = band_depth_calculation(spectra, wavelengths, (1.81598, 2.30456, 2.52951), (5, 3, 5))
+    bd2320 = band_depth_calculation(spectra, wavelengths, (1.81598, 2.32441, 2.52951), (5, 3, 5))
+    bd2330 = band_depth_calculation(spectra, wavelengths, (1.81598, 2.23182, 2.52951), (5, 3, 5))
+    bd2120 = band_depth_calculation(spectra, wavelengths, (1.81598, 2.11948, 2.52951), (5, 5, 5))
+    bd2170 = band_depth_calculation(spectra, wavelengths, (1.81598, 2.17233, 2.52951), (5, 5, 5))
+    bd2210 = band_depth_calculation(spectra, wavelengths, (1.81598, 2.21199, 2.52951), (5, 5, 5))
 
     d2300 = 1 - ((bd2290 + bd2320 + bd2330)/(bd2120 + bd2170 + bd2210))    
 
@@ -176,7 +192,7 @@ def bd1750_calculation(spectra, wavelengths):
     """
     bd1750 = np.zeros(spectra.shape[0])
 
-    bd1750 = 1 - __band_depth_calculation(spectra, wavelengths, (1.55264, 1.75009, 1.81598), (1,1,1))
+    bd1750 = 1 - band_depth_calculation(spectra, wavelengths, (1.55264, 1.75009, 1.81598), (1,1,1))
     bd1750[bd1750 < 0] = 0
 
     return bd1750
