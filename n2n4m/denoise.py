@@ -4,7 +4,8 @@ import numpy as np
 
 from n2n4m.model_functions import predict
 from n2n4m.model import Noise2Noise1D
+from n2n4m.io import load_image
 
-def run_denoise(model: Noise2Noise1D, image_filepath: str) -> np.ndarray:
+def denoise_image(model: Noise2Noise1D, image_filepath: str) -> np.ndarray:
     
     return np.zeros((1, 1))  # Placeholder
