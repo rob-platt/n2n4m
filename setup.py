@@ -23,6 +23,7 @@ setup(
         "pytest",
         "ipykernel",
         "pyarrow",
+        "ipywidgets",
         "crism_ml @ git+https://github.com/Banus/crism_ml.git@master#egg=crism_ml",
     ],
     classifiers=[
