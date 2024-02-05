@@ -16,10 +16,17 @@ from n2n4m.io import load_image
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from crism_ml.io import image_shape
 
-DEFAULT_MODEL_FILEPATH = pkg_resources.resource_filename("n2n4m", "data/trained_model_weights.pt")
-DEFAULT_SCALER_FILEPATH = pkg_resources.resource_filename("n2n4m", "data/input_standardiser.pkl")
+DEFAULT_MODEL_FILEPATH = pkg_resources.resource_filename(
+    "n2n4m", "data/trained_model_weights.pt"
+)
+DEFAULT_SCALER_FILEPATH = pkg_resources.resource_filename(
+    "n2n4m", "data/input_standardiser.pkl"
+)
 
-def band_index_mask(bands_to_keep: tuple = PLEBANI_WAVELENGTHS) -> tuple[np.ndarray, np.ndarray]:
+
+def band_index_mask(
+    bands_to_keep: tuple = PLEBANI_WAVELENGTHS,
+) -> tuple[np.ndarray, np.ndarray]:
     """Create a mask for the indices of bands to keep out of all CRISM L sensor bands.
 
     Parameters
@@ -41,7 +48,9 @@ def band_index_mask(bands_to_keep: tuple = PLEBANI_WAVELENGTHS) -> tuple[np.ndar
     return include_bands_indices, exclude_bands_indices
 
 
-def clip_bands(spectra: np.ndarray, bands_to_keep: tuple = PLEBANI_WAVELENGTHS) -> tuple[np.ndarray, np.ndarray]:
+def clip_bands(
+    spectra: np.ndarray, bands_to_keep: tuple = PLEBANI_WAVELENGTHS
+) -> tuple[np.ndarray, np.ndarray]:
     """Clip the bands of the spectra to the bands specified in bands_to_keep. Returns the interior bands and the exterior bands.
 
     Parameters
@@ -68,7 +77,11 @@ def clip_bands(spectra: np.ndarray, bands_to_keep: tuple = PLEBANI_WAVELENGTHS) 
     return interior_bands, exterior_bands
 
 
-def combine_bands(clipped_data: np.ndarray, extra_data: np.ndarray, bands_to_keep: tuple = PLEBANI_WAVELENGTHS) -> np.ndarray:
+def combine_bands(
+    clipped_data: np.ndarray,
+    extra_data: np.ndarray,
+    bands_to_keep: tuple = PLEBANI_WAVELENGTHS,
+) -> np.ndarray:
     """Combine the interior and exterior bands back into the original shape of the spectra.
 
     Parameters
@@ -82,7 +95,7 @@ def combine_bands(clipped_data: np.ndarray, extra_data: np.ndarray, bands_to_kee
     bands_to_keep : tuple, optional
         The bands corresposnding to the clipped_data.
         Default PLEBANI_WAVELENGTHS
-        
+
     Returns
     -------
     spectra : np.ndarray
@@ -134,8 +147,12 @@ def instantiate_default_model(filepath: str) -> Noise2Noise1D:
         The loaded model.
     """
     model = Noise2Noise1D(kernel_size=5, depth=3, num_blocks=4, num_input_features=350)
-    model_state_dict = load_model(filepath, map_location=device(check_available_device()))
-    new_model_state_dict = {k.replace("module.", ""): v for k, v in model_state_dict.items()} # Model was trained on multiple GPUs, so need to remove "module." from keys
+    model_state_dict = load_model(
+        filepath, map_location=device(check_available_device())
+    )
+    new_model_state_dict = {
+        k.replace("module.", ""): v for k, v in model_state_dict.items()
+    }  # Model was trained on multiple GPUs, so need to remove "module." from keys
     model.load_state_dict(new_model_state_dict)
     model.eval()
     return model
@@ -164,13 +181,13 @@ def create_dataloader(spectra: np.ndarray, batch_size: int = 1000) -> DataLoader
 
 
 def denoise_image(
-        image_filepath: str, 
-        scaler_filepath: str = DEFAULT_SCALER_FILEPATH, 
-        model: Noise2Noise1D | None = None, 
-        batch_size: int = 1000
-    ) -> np.ndarray:
+    image_filepath: str,
+    scaler_filepath: str = DEFAULT_SCALER_FILEPATH,
+    model: Noise2Noise1D | None = None,
+    batch_size: int = 1000,
+) -> np.ndarray:
     """Denoise an image using a trained N2N model.
-    
+
     Parameters
     ----------
     image_filepath : str
@@ -186,7 +203,7 @@ def denoise_image(
         The batch size for the DataLoader.
         Default 1000
     """
-    
+
     image = load_image(image_filepath)
     im_shape = image_shape(image)
     spectra = image["IF"]
@@ -194,13 +211,15 @@ def denoise_image(
 
     scaler = load_scaler(scaler_filepath)
     bands_to_denoise = scaler.transform(bands_to_denoise)
-    
+
     if model is None:
         model = instantiate_default_model(DEFAULT_MODEL_FILEPATH)
 
     spectra_dataloader = create_dataloader(bands_to_denoise, batch_size=batch_size)
 
-    denoised_spectra = predict(model, spectra_dataloader, device(check_available_device()))
+    denoised_spectra = predict(
+        model, spectra_dataloader, device(check_available_device())
+    )
     if check_available_device() == "cuda":
         denoised_spectra = denoised_spectra.cpu().numpy()
     else:
