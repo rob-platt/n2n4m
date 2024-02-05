@@ -1,5 +1,15 @@
 import torch
 
+def check_available_device() -> str:
+    """Return the device available to torch.
+
+    Returns
+    -------
+    device : str
+        The device available to torch.
+    """
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
 
 def train(model, optimizer, criterion, data_loader, device):
     model.train()
