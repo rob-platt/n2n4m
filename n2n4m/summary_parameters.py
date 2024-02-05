@@ -261,6 +261,7 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     """
     Calculate the summary parameter BD1750 across an image.
     BD1750 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
+    Negative values are clipped to 0.
 
     Parameters
     ----------
@@ -296,8 +297,8 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
 
 def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     """Calculate hte BD175 summary parameter across an image.
-    BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum.
-    BD175 from [1].
+    BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
+    Negative values are clipped to 0.
 
     Parameters
     ----------
@@ -322,13 +323,10 @@ def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray
     """
 
     bd175 = np.ones(spectra.shape[0])
-    lambda_c_1_idx = wavelengths.index(1.75009)
-    lambda_c_2_idx = wavelengths.index(1.75668)
-    lambda_l_idx = wavelengths.index(1.77644)
-    lambda_s_idx = wavelengths.index(1.69082)
 
-    bd175 = bd175 - (
-        (spectra[:, lambda_c_1_idx] + spectra[:, lambda_c_2_idx])
-        / (spectra[:, lambda_s_idx] + spectra[:, lambda_l_idx])
+    bd175 = 1 - band_depth_calculation(
+        spectra, wavelengths, (1.55264, 1.75009, 1.81598), (1, 1, 1)
     )
+    bd175[bd175 < 0] = 0
+
     return bd175
