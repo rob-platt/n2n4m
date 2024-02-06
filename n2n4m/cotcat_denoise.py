@@ -117,7 +117,7 @@ def moving_mean_filter(spectra: np.ndarray) -> np.ndarray:
     filtered_spectra[:,:,lower_bound_idx:-upper_bound_idx] = spectral_mean[:,:,lower_bound_idx:-upper_bound_idx]
     return filtered_spectra
 
-def cotcat_denoise(spectra, wavelengths):
+def cotcat_denoise(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
     """
     Apply CoTCAT denoising to spectra.
     Method as detailed in Bultel et al. 2015
@@ -137,10 +137,10 @@ def cotcat_denoise(spectra, wavelengths):
         The filtered spectra.
         Shape: (n_rows, n_cols, n_bands)
     """
-    breakpoint_idx = Utility_Funcs.find_breakpoint(wavelengths=wavelengths)
-    if breakpoint_idx == -1:
+    breakpoint_idx = utils.find_breakpoint(wavelengths=wavelengths, threshold=0.01)
+    if breakpoint_idx == -0:
         filtered_spectra = moving_mean_filter(moving_median_filter(sharpening_median_filter(spectra)))
-    elif len(wavelengths) - breakpoint_idx < 11:
+    elif len(wavelengths) - breakpoint_idx < 11 or breakpoint_idx < 11:
         raise ValueError("The breakpoint is too close to the end of the spectra to apply CoTCAT denoising.")
     else:
         filtered_spectra = np.append(moving_mean_filter(moving_median_filter(sharpening_median_filter(spectra[:, :, :breakpoint_idx]))), 
