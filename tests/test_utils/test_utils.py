@@ -53,8 +53,16 @@ def test_convert_xy_to_coordinates():
 
     assert type(test_df_converted) == pd.DataFrame
     # removed one column as x, y now coordinates
-    assert test_df_converted.shape == (3,2)  
+    assert test_df_converted.shape == (3, 2)
     assert "x" not in test_df_converted.columns
     assert "y" not in test_df_converted.columns
     assert "Coordinates" in test_df_converted.columns
     assert test_df_converted.loc[0, "Coordinates"] == [1, 2]
+
+
+def test_find_breakpoint():
+    test_wavelengths = (0.1, 0.105, 0.11, 0.3, 0.305)
+    breakpoint = utils.find_breakpoint(test_wavelengths)
+    assert breakpoint == 3
+    breakpoint = utils.find_breakpoint(test_wavelengths, threshold=1)
+    assert breakpoint == -0
