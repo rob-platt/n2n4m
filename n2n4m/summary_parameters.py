@@ -30,7 +30,7 @@ def wavelength_weights(
 
 def interpolated_center_wavelength_reflectance(
     short_ref: np.ndarray,
-    bd_wavelengths: tuple,
+    bd_wavelengths: tuple[float, float, float],
     long_ref: np.ndarray,
 ) -> np.ndarray:
     """
@@ -43,7 +43,7 @@ def interpolated_center_wavelength_reflectance(
     short_ref : np.ndarray
         Median reflectance of kernel centred at short wavelength.
         Shape (n_spectra,)
-    bd_wavelengths: tuple
+    bd_wavelengths: tuple[float, float, float]
         Wavelengths to calculate the centre wavelength reflectance for.
         (short_wavelength, center_wavelength, long_wavelength)
     long_ref : np.ndarray
@@ -62,9 +62,9 @@ def interpolated_center_wavelength_reflectance(
 
 def band_depth_calculation(
     spectra: np.ndarray,
-    all_wavelengths: tuple,
-    bd_wavelengths: tuple,
-    kernel_sizes: tuple,
+    all_wavelengths: tuple[float, ...],
+    bd_wavelengths: tuple[float, float, float],
+    kernel_sizes: tuple[int, int, int],
 ) -> np.ndarray:
     """
     Calculate the band depth for a given set of wavelengths.
@@ -139,7 +139,7 @@ def band_depth_calculation(
 
 
 def hyd_femg_clay_index_calculation(
-    spectra: np.ndarray, wavelengths: tuple
+    spectra: np.ndarray, wavelengths: tuple[float, ...]
 ) -> np.ndarray:
     """
     Calculate the summary parameter Hydrated Fe/Mg Clay Index across an image.
@@ -150,7 +150,7 @@ def hyd_femg_clay_index_calculation(
     spectra : np.ndarray
         Spectra to calculate Hydrated Fe/Mg Clay Index for.
         Shape (n_spectra, n_wavelengths)
-    wavelengths : tuple
+    wavelengths : tuple[float, ...]
         Wavelengths corresponding to spectra.
         Shape (n_wavelengths,)
 
@@ -204,7 +204,7 @@ def hyd_femg_clay_index_calculation(
     return femg_clays
 
 
-def d2300_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
+def d2300_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
     """
     Calculate the dropoff at 2300nm across an image.
     Highlights Mg,Fe-OH minerals, as well as Mg-Carbonates, and CO2 ice [1].
@@ -214,7 +214,7 @@ def d2300_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     spectra : np.ndarray
         Spectra to calculate dropoff at 2300nm for.
         Shape (n_spectra, n_wavelengths)
-    wavelengths : np.ndarray
+    wavelengths : tuple[float, ...]
         Wavelengths corresponding to spectra.
         Shape (n_wavelengths,)
 
@@ -257,7 +257,7 @@ def d2300_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     return d2300
 
 
-def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
+def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
     """
     Calculate the summary parameter BD1750 across an image.
     BD1750 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
@@ -268,7 +268,7 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     spectra : np.ndarray
         Spectra to calculate BD1750 for.
         Shape (n_spectra, n_wavelengths)
-    wavelengths : np.ndarray
+    wavelengths : tuple[float, ...]
         Wavelengths corresponding to spectra.
         Shape (n_wavelengths,)
 
@@ -295,7 +295,7 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
     return bd1750
 
 
-def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray:
+def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
     """Calculate hte BD175 summary parameter across an image.
     BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
     Negative values are clipped to 0.
@@ -305,7 +305,7 @@ def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple) -> np.ndarray
     spectra : np.ndarray
         Spectra to calculate BD175 for.
         Shape (n_spectra, n_wavelengths)
-    wavelengths : tuple
+    wavelengths : tuple[float, ...]
         Wavelengths corresponding to spectra.
         Shape (n_wavelengths,)
 

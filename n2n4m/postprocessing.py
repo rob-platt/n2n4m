@@ -50,7 +50,7 @@ def load_image_from_shortcode(
 
 def calculate_pixel_blandness(
     spectra: np.ndarray,
-    im_shape: tuple,
+    im_shape: tuple[int, int],
     train_set_dir: str = "data",
 ) -> np.ndarray:
     """
@@ -63,7 +63,7 @@ def calculate_pixel_blandness(
         Contains the spectral data.
         If ndarray, must be the spectral data only, in shape (n_spectra, n_bands).
         Should contain only the 350 channels required by the Plebani model.
-    im_shape : tuple
+    im_shape : tuple[int, int]
         The shape of the image.
     train_set_dir : str
         Path to the directory containing the bland pixel training set.

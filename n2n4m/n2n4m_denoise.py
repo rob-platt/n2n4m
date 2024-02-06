@@ -25,7 +25,7 @@ DEFAULT_SCALER_FILEPATH = pkg_resources.resource_filename(
 
 
 def band_index_mask(
-    bands_to_keep: tuple = PLEBANI_WAVELENGTHS,
+    bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Create a mask for the indices of bands to keep out of all CRISM L sensor bands.
 
@@ -49,7 +49,7 @@ def band_index_mask(
 
 
 def clip_bands(
-    spectra: np.ndarray, bands_to_keep: tuple = PLEBANI_WAVELENGTHS
+    spectra: np.ndarray, bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS
 ) -> tuple[np.ndarray, np.ndarray]:
     """Clip the bands of the spectra to the bands specified in bands_to_keep. Returns the interior bands and the exterior bands.
 
@@ -80,7 +80,7 @@ def clip_bands(
 def combine_bands(
     clipped_data: np.ndarray,
     extra_data: np.ndarray,
-    bands_to_keep: tuple = PLEBANI_WAVELENGTHS,
+    bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS,
 ) -> np.ndarray:
     """Combine the interior and exterior bands back into the original shape of the spectra.
 
@@ -92,7 +92,7 @@ def combine_bands(
     extra_data : np.ndarray
         The spectra with the inverse bands specified in bands_to_keep.
         Shape (n_samples, n_bands)
-    bands_to_keep : tuple, optional
+    bands_to_keep : tuple[float, ...], optional
         The bands corresposnding to the clipped_data.
         Default PLEBANI_WAVELENGTHS
 

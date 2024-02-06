@@ -34,7 +34,7 @@ def load_dataset(path: str) -> pd.DataFrame:
 
 def expand_dataset(
     dataset: pd.DataFrame,
-    bands: tuple = ALL_WAVELENGTHS,
+    bands: tuple[float, ...] = ALL_WAVELENGTHS,
 ) -> pd.DataFrame:
     """
     Convert the spectrum column into a column per wavelength value.
@@ -65,7 +65,7 @@ def expand_dataset(
     return dataset
 
 
-def drop_bad_bands(dataset: pd.DataFrame, bands_to_keep: tuple = PLEBANI_WAVELENGTHS):
+def drop_bad_bands(dataset: pd.DataFrame, bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS):
     """
     Drop any bands with consistently bad pixels.
     Default drops 1.00135, 1.0079, > 3.9167, and between 2.66816 and 2.80697 inclusive
@@ -216,7 +216,7 @@ def get_linear_interp_spectra(
     spectra: np.ndarray,
     lower_bound: float = 1.91487,
     upper_bound: float = 2.08645,
-    wavelengths: tuple = PLEBANI_WAVELENGTHS,
+    wavelengths: tuple[float, ...] = PLEBANI_WAVELENGTHS,
 ) -> np.ndarray:
     """
     Get the linear interpolation of the spectra between the lower and upper bounds.
@@ -231,7 +231,7 @@ def get_linear_interp_spectra(
     upper_bound : float
         The upper bound wavelength.
         Default: 2.08645
-    wavelengths : tuple
+    wavelengths : tuple[float, ...]
         The wavelengths of the spectra.
         Default: PLEBANI_WAVELENGTHS
 
@@ -257,7 +257,7 @@ def detect_artefact(
     spectra: np.ndarray,
     lower_bound: float = 1.91487,
     upper_bound: float = 2.08645,
-    wavelengths: tuple = PLEBANI_WAVELENGTHS,
+    wavelengths: tuple[float, ...] = PLEBANI_WAVELENGTHS,
     threshold: float = 0.6,
 ) -> bool:
     """
@@ -273,7 +273,7 @@ def detect_artefact(
     upper_bound : float
         The upper bound wavelength.
         Default: 2.08645
-    wavelengths : tuple
+    wavelengths : tuple[float, ...]
         The wavelengths of the spectra.
         Default: PLEBANI_WAVELENGTHS
 
@@ -299,7 +299,7 @@ def impute_artefacts(
     dataset: pd.DataFrame,
     lower_bound: float = 1.91487,
     upper_bound: float = 2.08645,
-    wavelengths: tuple = PLEBANI_WAVELENGTHS,
+    wavelengths: tuple[float, ...] = PLEBANI_WAVELENGTHS,
     threshold: float = 0.6,
 ) -> pd.DataFrame:
     """
@@ -317,7 +317,7 @@ def impute_artefacts(
     upper_bound : float
         The upper bound wavelength.
         Default: 2.08645
-    wavelengths : tuple
+    wavelengths : tuple[float, ...]
         The wavelengths of the spectra.
         Default: PLEBANI_WAVELENGTHS
 
