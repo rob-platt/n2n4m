@@ -45,3 +45,31 @@ def convert_xy_to_coordinates(dataset):
         dataset["Coordinates"] = dataset.apply(lambda x: [x["x"], x["y"]], axis=1)
         dataset = dataset.drop(columns=["x", "y"])
     return dataset
+
+
+def find_breakpoint(wavelengths: tuple[float, ...], threshold: float = 0.01) -> int:
+    """
+    Identify any gaps in the wavelengths where there are bands missing.
+    Useful for identifying where bands are dropped to avoid bad bands.
+    Returns the index of the first band after the gap for easy slicing.
+    If no gap, returns -0.
+    ONLY FINDS THE FIRST GAP.
+
+    Parameters
+    ----------
+    wavelengths : tuple[float, ...]
+        List of wavelengths in the dataset.
+    threshold : float, optional
+        The maximum gap allowed between bands
+        Default 0.01
+
+    Returns
+    -------
+    breakpoint : int
+        Index of the first bad after the gap.
+        If no gap, returns -0.
+    """
+    for idx, band in enumerate(wavelengths):
+        if band - wavelengths[idx - 1] > threshold:
+            return idx
+    return -0
