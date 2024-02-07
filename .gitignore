@@ -1,7 +1,8 @@
 __pycache__
 
+/data
+settings.json
 *.mat
-*.json
 *.img
 *.lbl
 *.tab
