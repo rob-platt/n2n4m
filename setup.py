@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 VERSION = '0.0.1'
-DESCRIPTION = 'Shallow water remote sensing package'
-LONG_DESCRIPTION = 'Package that integrates remote sensing workflows for shallow water environments and machine learning'
+DESCRIPTION = 'Noise2Noise for Mars: Package for denoising and visualization of CRISM data L sensor data.'
+LONG_DESCRIPTION = DESCRIPTION
 
 # Setting up
 setup(
