@@ -9,6 +9,23 @@ from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.utils import convert_coordinates_to_xy, convert_xy_to_coordinates
 
 
+def check_data_exists(filepath: str) -> bool:
+    """
+    Check if Plebani bland pixel model training data exists.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the data directory.
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+    """
+    return os.path.exists(os.path.join(filepath, "CRISM_bland_unratioed.mat"))
+
+
 def load_image_from_shortcode(
     mineral_sample: pd.DataFrame,
     data_dir: str = "../data/raw_images",
@@ -74,6 +91,9 @@ def calculate_pixel_blandness(
     blandness : np.ndarray
         Array of blandness values for each pixel in the image in shape (n_rows, n_cols).
     """
+    if check_data_exists(train_set_dir) == False:
+        raise FileNotFoundError(f"Training data not found in {train_set_dir}. Please download the training data from"
+                                f"https://cs.iupui.edu/~mdundar/CRISM.htm and place in the data directory.")
     # Need these checks as Plebani functions will silent fail otherwise.
     if type(spectra) != np.ndarray:
         raise TypeError(f"spectra must be a dictionary or numpy array, not {type(spectra)}")
