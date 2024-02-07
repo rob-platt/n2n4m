@@ -5,9 +5,12 @@ from ipywidgets import widgets, interactive, IntSlider
 
 from n2n4m import io
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
+from n2n4m.postprocessing import calculate_pixel_blandness
+from n2n4m.summary_parameters import IMPLEMENTED_SUMMARY_PARAMETERS
 from crism_ml.io import image_shape
+from crism_ml.preprocessing import remove_spikes_column, ratio
 
-BAND_MASK = [True if wavelength in PLEBANI_WAVELENGTHS else False for wavelength in ALL_WAVELENGTHS]
+BAND_MASK = np.isin(ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS)
 
 class CRISMImage:
     """
@@ -35,43 +38,75 @@ class CRISMImage:
 
     """
     def __init__(self, filepath: str):
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(f"File {filepath} not found.")
 
         self.filepath = filepath
-        try:
-            self.image = io.load_image(filepath)
-        except:
-            raise ValueError(f"Image at: {filepath} could not be loaded.")
-
-        self.spatial_dims = self.__get_spatial_dims()
+        self.image = self._load_image(self.filepath)
+        self.spatial_dims = self._get_spatial_dims()
         self.im_shape = (*self.spatial_dims, len(ALL_WAVELENGTHS))
+        self.num_bands = self.im_shape[-1]
         self.image = self.image["IF"].reshape(*self.im_shape)
 
-        self.im_name = self.__get_im_name()
+        self.im_name = self._get_im_name()
         self.summary_parameters = {}
-        self.cotcat_denoised = None
-        self.n2n4m_denoised = None
         print("Image loaded successfully.")
 
-    def __get_im_name(self) -> str:
+        self.ratioed_image = None
+
+    def _load_image(self, filepath: str) -> dict:
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"File {filepath} not found.")
+        try:
+            image = io.load_image(filepath)
+        except:
+            raise ValueError(f"Image at: {filepath} could not be loaded.")
+        return image
+    
+    def _get_im_name(self) -> str:
         im_name = self.filepath.split("/")[-1]
         im_name = im_name.split("_")[0]
         return im_name
 
-    def __get_spatial_dims(self) -> tuple:
+    def _get_spatial_dims(self) -> tuple[int, int]:
         im_shape = image_shape(self.image)
         return im_shape
+    
+    def ratio_image(self, train_data_dir: str = "data") -> None:
+        """Ratio the image using the Plebani bland pixel model.
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. ALL_WAVELENGTHS are ratioed.
+        
+        """
+        if self.ratioed_image is not None:
+            print("Image has already been ratioed.")
+            return
+        flattened_image = self.image.reshape(-1, self.num_bands)
+        flattened_image_clipped = flattened_image[:, BAND_MASK]
+        pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
+        despiked_image = remove_spikes_column(self.image.copy(), size=3, sigma=5)
+        self.ratioed_image = ratio(despiked_image, pixel_blandness)
+        return 
 
     def calculate_summary_parameter(self, parameter: str) -> None:
-        pass
+        """Calculate summary parameter for the image.
+        Uses the ratioed image.
+        
+        """
+        if self.ratioed_image is None:
+            raise ValueError("Image must be ratioed before summary parameters can be calculated.")
+        if parameter in self.summary_parameters:
+            print(f"{parameter} has already been calculated.")
+            return
+        if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
+            raise ValueError(f"Summary parameter {parameter} is not implemented.")
+        flattened_image = self.ratioed_image.reshape(-1, self.num_bands)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS)
+        return
+        
 
-    def cotcat_denoise(self):
-        self.cotcat_denoised = None
-        pass
 
-    def n2n4m_denoise(self):
-        self.n2n4m_denoised = None
+class Visualiser():
+
+    def __init__(self, image: CRISMImage):
+        self.image = image
         pass
 
     def get_false_colours(self) -> None:
@@ -100,7 +135,7 @@ class CRISMImage:
         ax.set_ylabel("Reflectance (I/F)")
         ax.set_xlabel("Wavelength (μm)")
         if title is None:
-            ax.set_title(self.im_name)
+            ax.set_title(self.image.im_name)
         else: ax.set_title(title)
         return fig, ax
 
@@ -133,14 +168,14 @@ class CRISMImage:
 
         ax.imshow(image)
         if title is None:
-            ax.set_title(self.im_name)
+            ax.set_title(self.image.im_name)
         else:
             ax.set_title(title)
 
         ax.set_axis_off()
         return fig, ax
     
-    def interactive_plot(self) -> None:
+    def interactive_plot(self) -> interactive:
         """Interactive plot of the image.
         """
         def update_plots(x, y, band_num):
@@ -148,16 +183,16 @@ class CRISMImage:
             fig, ax = plt.subplots(1, 2, figsize=(10, 4))
             if band_num == "":
                 band_num = 60
-            self.plot_image(self.image[:, :, int(band_num)], ax=ax[0])
+            self.plot_image(self.image.image[:, :, int(band_num)], ax=ax[0])
             
             ax[0].scatter(x, y, marker='x', color='red', label="Selected Pixel")
 
-            self.plot_spectrum(self.image[y, x], ax=ax[1])
+            self.plot_spectrum(self.image.image[y, x], ax=ax[1])
 
             plt.tight_layout()
             plt.show()
-        x_slider = IntSlider(min=0, max=self.spatial_dims[1]-1, value=0, step=1, description='X:')
-        y_slider = IntSlider(min=0, max=self.spatial_dims[0]-1, value=0, step=1, description='Y:')
+        x_slider = IntSlider(min=0, max=self.image.spatial_dims[1]-1, value=0, step=1, description='X:')
+        y_slider = IntSlider(min=0, max=self.image.spatial_dims[0]-1, value=0, step=1, description='Y:')
         band_to_display = widgets.Text(value="60", placeholder="0-438", description="Band:", continuous_update=False)
 
         # Create interactive widget
