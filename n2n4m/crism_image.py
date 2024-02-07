@@ -40,11 +40,10 @@ class CRISMImage:
     def __init__(self, filepath: str):
 
         self.filepath = filepath
-        self.image = self._load_image(self.filepath)
-        self.spatial_dims = self._get_spatial_dims()
-        self.im_shape = (*self.spatial_dims, len(ALL_WAVELENGTHS))
+        self.image_array, self.SPy = self._load_image(self.filepath)
+        self.im_shape = self.image_array.shape
+        self.spatial_dims = self.im_shape[:-1]
         self.num_bands = self.im_shape[-1]
-        self.image = self.image["IF"].reshape(*self.im_shape)
 
         self.im_name = self._get_im_name()
         self.summary_parameters = {}
@@ -66,10 +65,6 @@ class CRISMImage:
         im_name = im_name.split("_")[0]
         return im_name
 
-    def _get_spatial_dims(self) -> tuple[int, int]:
-        im_shape = image_shape(self.image)
-        return im_shape
-    
     def ratio_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. ALL_WAVELENGTHS are ratioed.
@@ -78,10 +73,10 @@ class CRISMImage:
         if self.ratioed_image is not None:
             print("Image has already been ratioed.")
             return
-        flattened_image = self.image.reshape(-1, self.num_bands)
+        flattened_image = self.image_array.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
         pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        despiked_image = remove_spikes_column(self.image.copy(), size=3, sigma=5)
+        despiked_image = remove_spikes_column(self.image_array.copy(), size=3, sigma=5)
         self.ratioed_image = ratio(despiked_image, pixel_blandness)
         return 
 
@@ -100,7 +95,7 @@ class CRISMImage:
         flattened_image = self.ratioed_image.reshape(-1, self.num_bands)
         self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS)
         return
-        
+    
 
 
 class Visualiser():
