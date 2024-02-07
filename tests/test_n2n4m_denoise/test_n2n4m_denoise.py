@@ -2,11 +2,15 @@ import pytest
 import numpy as np
 from sklearn.preprocessing import RobustScaler
 from sklearn.exceptions import NotFittedError
+import importlib.resources
 
 import n2n4m.n2n4m_denoise as n2n4m_denoise
 from n2n4m.wavelengths import ALL_WAVELENGTHS
 from n2n4m.model import Noise2Noise1D
 
+
+TRAINED_MODEL_FILEPATH = importlib.resources.files("n2n4m") / "data/trained_model_weights.pt"
+FITTED_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/input_standardiser.pkl"
 
 def test_band_index_mask():
     bands_to_keep = (
@@ -80,9 +84,8 @@ def test_combine_bands():
 
 
 def test_load_scaler():
-    trained_scaler_filepath = "data/input_standardiser.pkl"
-    untrained_scaler_filepath = "tests/test_denoise/untrained_scaler.pkl"
-    scaler = n2n4m_denoise.load_scaler(trained_scaler_filepath)
+    untrained_scaler_filepath = "tests/test_n2n4m_denoise/untrained_scaler.pkl"
+    scaler = n2n4m_denoise.load_scaler(FITTED_SCALER_FILEPATH)
     assert type(scaler) == type(RobustScaler())
     pytest.raises(
         NotFittedError, n2n4m_denoise.load_scaler, untrained_scaler_filepath
@@ -90,7 +93,6 @@ def test_load_scaler():
 
 
 def test_instantiate_default_model():
-    filepath = "data/trained_model_weights.pt"
-    model = n2n4m_denoise.instantiate_default_model(filepath)
+    model = n2n4m_denoise.instantiate_default_model(TRAINED_MODEL_FILEPATH)
     assert type(model) == Noise2Noise1D
     assert model.training == False  # Model should be in evaluation mode
