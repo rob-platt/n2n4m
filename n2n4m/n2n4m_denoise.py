@@ -7,7 +7,7 @@ from sklearn.base import BaseEstimator
 from torch import load as load_model
 from torch import device, Tensor
 from torch.utils.data import TensorDataset, DataLoader
-import pkg_resources
+import importlib.resources 
 
 
 from n2n4m.model_functions import predict, check_available_device
@@ -16,12 +16,9 @@ from n2n4m.io import load_image
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from crism_ml.io import image_shape
 
-DEFAULT_MODEL_FILEPATH = pkg_resources.resource_filename(
-    "n2n4m", "data/trained_model_weights.pt"
-)
-DEFAULT_SCALER_FILEPATH = pkg_resources.resource_filename(
-    "n2n4m", "data/input_standardiser.pkl"
-)
+
+DEFAULT_MODEL_FILEPATH = importlib.resources.files("n2n4m") / "data/trained_model_weights.pt"
+DEFAULT_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/input_standardiser.pkl"
 
 
 def band_index_mask(
