@@ -19,7 +19,7 @@ def test_load_images_from_shortcode():
     good_mineral_sample = pd.DataFrame({"Image_Name": "3561F", "Pixel_Class": [10]})
     bad_mineral_sample = pd.DataFrame({"Image_Name": "AAAAA", "Pixel_Class": [10]})
     good_data_dir = "tests/test_postprocessing"
-    bad_data_dir = "tests/test_postprocessing/AAAAA"
+    bad_data_dir = "tests/"
     image = postprocessing.load_image_from_shortcode(good_mineral_sample, good_data_dir)
     assert type(image) == dict
     pytest.raises(
