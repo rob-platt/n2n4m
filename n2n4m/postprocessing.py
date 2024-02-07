@@ -2,12 +2,9 @@ import pandas as pd
 import numpy as np
 import os
 import n2n4m.io
-from crism_ml.io import image_shape
 from crism_ml.preprocessing import filter_bad_pixels, remove_spikes_column, replace
 from crism_ml.train import train_model_bland, feat_masks, compute_bland_scores
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
-from n2n4m.utils import convert_coordinates_to_xy, convert_xy_to_coordinates
-
 
 def check_data_exists(filepath: str) -> bool:
     """
@@ -29,9 +26,9 @@ def check_data_exists(filepath: str) -> bool:
 def load_image_from_shortcode(
     mineral_sample: pd.DataFrame,
     data_dir: str = "../data/raw_images",
-) -> dict:
+) -> np.ndarray:
     """
-    Given a mineral sample from a dataset, load the image.
+    Given a mineral sample from a dataset, load the image array.
 
     Parameters
     ----------
@@ -42,8 +39,8 @@ def load_image_from_shortcode(
 
     Returns
     -------
-    image : dict
-        Dictionary of image data.
+    image_array : np.ndarray
+        Image.
     """
     image_shortcode = mineral_sample["Image_Name"].values[0]
     image_folder_list = os.listdir(data_dir)
@@ -61,8 +58,8 @@ def load_image_from_shortcode(
             f"Image file not found or multiple files found for shortcode {image_shortcode}."
         )
     image_filename = os.path.join(image_folder, image_filename[0])
-    image = n2n4m.io.load_image(image_filename)
-    return image
+    image_array, hdr = n2n4m.io.load_image(image_filename)
+    return image_array
 
 
 def calculate_pixel_blandness(
@@ -81,7 +78,7 @@ def calculate_pixel_blandness(
         If ndarray, must be the spectral data only, in shape (n_spectra, n_bands).
         Should contain only the 350 channels required by the Plebani model.
     im_shape : tuple[int, int]
-        The shape of the image.
+        The spatial shape of the image.
     train_set_dir : str
         Path to the directory containing the bland pixel training set.
         Default is "data".
