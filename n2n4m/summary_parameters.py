@@ -1,7 +1,9 @@
 import numpy as np
 
+# If implementing new summary parameters, add them to the IMPLEMENTED_SUMMARY_PARAMETERS dictionary below for them to show in CRISMImage.summary_parameters.
 
-def wavelength_weights(
+
+def _wavelength_weights(
     short_wavelength: float, center_wavelength: float, long_wavelength: float
 ) -> tuple[float, float]:
     """
@@ -28,7 +30,7 @@ def wavelength_weights(
     return a, b
 
 
-def interpolated_center_wavelength_reflectance(
+def _interpolated_center_wavelength_reflectance(
     short_ref: np.ndarray,
     bd_wavelengths: tuple[float, float, float],
     long_ref: np.ndarray,
@@ -56,11 +58,11 @@ def interpolated_center_wavelength_reflectance(
         Interpolated centre wavelength reflectance.
         Shape (n_spectra,)
     """
-    a, b = wavelength_weights(bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2])
+    a, b = _wavelength_weights(bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2])
     return a * short_ref + b * long_ref
 
 
-def band_depth_calculation(
+def _band_depth_calculation(
     spectra: np.ndarray,
     all_wavelengths: tuple[float, ...],
     bd_wavelengths: tuple[float, float, float],
@@ -131,7 +133,7 @@ def band_depth_calculation(
         axis=1,
     )
 
-    interpolated_center_ref = interpolated_center_wavelength_reflectance(
+    interpolated_center_ref = _interpolated_center_wavelength_reflectance(
         short_ref, bd_wavelengths, long_ref
     )
     band_depth = center_ref / interpolated_center_ref
@@ -170,31 +172,31 @@ def hyd_femg_clay_index_calculation(
 
     femg_clays = np.zeros(spectra.shape[0])
 
-    bd14 = 1 - band_depth_calculation(
+    bd14 = 1 - _band_depth_calculation(
         spectra, wavelengths, (1.33578, 1.41459, 1.55264), (5, 3, 5)
     )
     bd14[bd14 < 0] = 0
-    bd19 = 1 - band_depth_calculation(
+    bd19 = 1 - _band_depth_calculation(
         spectra, wavelengths, (1.86212, 1.92146, 2.07985), (5, 5, 5)
     )
     bd19[bd19 < 0] = 0
-    bd229 = 1 - band_depth_calculation(
+    bd229 = 1 - _band_depth_calculation(
         spectra, wavelengths, (2.15251, 2.28472, 2.34426), (3, 5, 3)
     )
     bd229[bd229 < 0] = 0
-    bd231 = 1 - band_depth_calculation(
+    bd231 = 1 - _band_depth_calculation(
         spectra, wavelengths, (2.15251, 2.30456, 2.34426), (3, 3, 3)
     )
     bd231[bd231 < 0] = 0
-    bd232 = 1 - band_depth_calculation(
+    bd232 = 1 - _band_depth_calculation(
         spectra, wavelengths, (2.15251, 2.32441, 2.34426), (3, 3, 3)
     )
     bd232[bd232 < 0] = 0
-    bd238 = 1 - band_depth_calculation(
+    bd238 = 1 - _band_depth_calculation(
         spectra, wavelengths, (2.34426, 2.38396, 2.4303), (3, 3, 3)
     )
     bd238[bd238 < 0] = 0
-    bd240 = 1 - band_depth_calculation(
+    bd240 = 1 - _band_depth_calculation(
         spectra, wavelengths, (2.34426, 2.3972, 2.4303), (3, 3, 3)
     )
     bd240[bd240 < 0] = 0
@@ -233,22 +235,22 @@ def d2300_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np
     """
     d2300 = np.zeros(spectra.shape[0])
 
-    bd2290 = band_depth_calculation(
+    bd2290 = _band_depth_calculation(
         spectra, wavelengths, (1.81598, 2.30456, 2.52951), (5, 3, 5)
     )
-    bd2320 = band_depth_calculation(
+    bd2320 = _band_depth_calculation(
         spectra, wavelengths, (1.81598, 2.32441, 2.52951), (5, 3, 5)
     )
-    bd2330 = band_depth_calculation(
+    bd2330 = _band_depth_calculation(
         spectra, wavelengths, (1.81598, 2.23182, 2.52951), (5, 3, 5)
     )
-    bd2120 = band_depth_calculation(
+    bd2120 = _band_depth_calculation(
         spectra, wavelengths, (1.81598, 2.11948, 2.52951), (5, 5, 5)
     )
-    bd2170 = band_depth_calculation(
+    bd2170 = _band_depth_calculation(
         spectra, wavelengths, (1.81598, 2.17233, 2.52951), (5, 5, 5)
     )
-    bd2210 = band_depth_calculation(
+    bd2210 = _band_depth_calculation(
         spectra, wavelengths, (1.81598, 2.21199, 2.52951), (5, 5, 5)
     )
 
@@ -287,7 +289,7 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> n
     """
     bd1750 = np.zeros(spectra.shape[0])
 
-    bd1750 = 1 - band_depth_calculation(
+    bd1750 = 1 - _band_depth_calculation(
         spectra, wavelengths, (1.55264, 1.75009, 1.81598), (1, 1, 1)
     )
     bd1750[bd1750 < 0] = 0
@@ -295,7 +297,7 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> n
     return bd1750
 
 
-def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
+def bd175_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
     """Calculate hte BD175 summary parameter across an image.
     BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
     Negative values are clipped to 0.
@@ -324,9 +326,12 @@ def alt_bd175_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -
 
     bd175 = np.ones(spectra.shape[0])
 
-    bd175 = 1 - band_depth_calculation(
+    bd175 = 1 - _band_depth_calculation(
         spectra, wavelengths, (1.55264, 1.75009, 1.81598), (1, 1, 1)
     )
     bd175[bd175 < 0] = 0
 
     return bd175
+
+
+IMPLEMENTED_SUMMARY_PARAMETERS = {"hyd_femg_clay_index": hyd_femg_clay_index_calculation, "d2300": d2300_calculation, "bd1750": bd1750_calculation, "bd175": bd175_calculation}
