@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import spectral
 import warnings
-from ipywidgets import widgets, interactive, IntSlider
+from ipywidgets import widgets, interactive, HBox, VBox
 
 from n2n4m import io
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
@@ -142,10 +142,8 @@ class Visualiser():
 
     def __init__(self, image: CRISMImage):
         self.image = image
-        self.false_colour_im = None
         self.bad_value_check_flag = False
         self.im_array_copy = self.image.image_array # If bad values are detected, a copy will be made and bad values replaced with np.nan.
-        pass
 
     def replace_bad_values(self) -> None:
         """Replace bad values in the new array with np.nan."""
@@ -184,12 +182,6 @@ class Visualiser():
         image[image < 0] = 0
         image[image > np.nanpercentile(image, percentile)] = np.nanpercentile(image, percentile)
         return image
-
-    def get_false_colours(self) -> None:
-        pass
-
-    def plot_false_colours(self) -> None:
-        pass
 
     def get_spectrum(self, image: np.ndarray, pixel_coords: tuple[int, int]) -> np.ndarray:
         """Get spectrum of a pixel (1D)
@@ -310,8 +302,8 @@ class Visualiser():
         
         Parameters
         ----------
-        band_num : int
-            Band number to plot.
+        image : np.ndarray
+            2D slice of the hyperspectral datacube.
         title : str, optional
             Title of the plot.
             If None, the title will be the name of the image.
@@ -333,46 +325,42 @@ class Visualiser():
         ax.set_axis_off()
         return fig, ax
     
-    def interactive_plot(self) -> interactive:
-        """Interactive plot of the image.
+    def interactive_plot(self) -> interactive | VBox | HBox:
+        """Interactive plot of the image and spectrum.
         """
-        def update_plots(x, y, **kwargs):
+        def update_plots(x, y, spectrum_range, image_band, **kwargs):
 
             fig, ax = plt.subplots(1, 2, figsize=(10, 4))
             # Image Plot
-            if "dropdown" in kwargs:
-                if kwargs["dropdown"] == "Raw":
-                    if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
-                        band_num = 59
-                    else:
-                        band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
-                    image = self.get_image(band_num)
-                    self.plot_image(image, ax=ax[0])               
-                else:
-                    image = self.get_summary_parameter(kwargs["dropdown"])
-                    self.plot_image(image, ax=ax[0])
+            if "dropdown" in kwargs and kwargs["dropdown"] != "Raw":
+                image = self.get_summary_parameter(kwargs["dropdown"])
             else: # Default is must have at least passed a raw image.
-                if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
+                if image_band == "" or int(image_band) > self.image.num_bands or int(image_band) < 1:
                     band_num = 59
                 else:
-                    band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
+                    band_num = int(image_band)-1 # -1 as python is 0-indexed
                 image = self.get_image(band_num)
-                self.plot_image(image, ax=ax[0]) 
+            self.plot_image(image, ax=ax[0]) 
                   
             # Add scatter plot of selected pixel to image plot
             ax[0].scatter(x, y, marker='x', color='red', label="Selected Pixel")
 
             # Spectrum Plot
-            pixel = self.get_spectrum(self.im_array_copy, (x, y))
-            band_range = format_spectrum_band_range(kwargs["spectrum_range"])
+            # Options are ratioed or raw, if ratioed, must have a ratioed image.
+            # If option is not ratioed, then would be same as if ratioed not in kwargs.
+            pixel = self.get_spectrum(self.im_array_copy, (x, y)) 
+            if "ratio" in kwargs and kwargs["ratio"] == "Ratioed":
+                pixel = self.get_spectrum(self.image.ratioed_image, (x, y))
+            band_range = format_spectrum_band_range(spectrum_range)
             bands = self.get_bands(band_range)
             pixel = pixel[band_range[0]-1:band_range[1]+1] # -1 as python is 0-indexed and +1 to be inclusive of stop.
             self.plot_spectrum(pixel, bands=bands, ax=ax[1], title=f"{self.image.im_name} - Spectrum at ({x}, {y})")
 
             plt.tight_layout()
-            plt.show()
+            return fig, ax
 
-        def enable_band_widget(change):
+        def enable_image_band_widget(change):
+            """Summary parameters have no bands, so if dropdown is not raw, disable the band widget."""
             if change.new == "Raw":
                 image_band_to_display.disabled = False
                 image_band_to_display.value = "60"
@@ -385,19 +373,28 @@ class Visualiser():
             return int(start_band), int(stop_band)
     
         style = {'description_width': 'initial'}
-        x_slider = IntSlider(min=0, max=self.image.spatial_dims[1]-1, value=0, step=1, description='X:')
-        y_slider = IntSlider(min=0, max=self.image.spatial_dims[0]-1, value=0, step=1, description='Y:')
+        x_slider = widgets.IntSlider(min=0, max=self.image.spatial_dims[1]-1, value=0, step=1, description='X:')
+        y_slider = widgets.IntSlider(min=0, max=self.image.spatial_dims[0]-1, value=0, step=1, description='Y:')
         image_band_to_display = widgets.Text(value="60", placeholder="1-438", description="Image Band:", style=style, continuous_update=False)
         spectrum_band_range = widgets.Text(value="1-438", placeholder="1-438", description="Spectrum Band Range:", style=style, continuous_update=False)
 
+        additional_spectrum_widgets = {}
+        if self.image.ratioed_image is not None:
+            ratio_button = widgets.ToggleButtons(options=["Raw", "Ratioed"], button_style="", value="Raw", description="Spectrum Type:", style=style)
+            additional_spectrum_widgets["ratio"] = ratio_button
+
+        additional_image_widgets = {}
         if self.image.summary_parameters:
             dropdown_options = list(self.image.summary_parameters.keys())
             dropdown_options.append("Raw")
             summary_parameter_dropdown = widgets.Dropdown(options=dropdown_options, value="Raw", description="Image Options:", style=style)
-            summary_parameter_dropdown.observe(enable_band_widget, names='value')
-            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, spectrum_range=spectrum_band_range, dropdown=summary_parameter_dropdown, band_num=image_band_to_display)
-        else:
-            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, spectrum_range=spectrum_band_range, band_num=image_band_to_display)
-        
-        return interactive_plot
+            summary_parameter_dropdown.observe(enable_image_band_widget, names='value')
+            additional_image_widgets["dropdown"] = summary_parameter_dropdown
+
+        interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, spectrum_range=spectrum_band_range, image_band=image_band_to_display, **additional_spectrum_widgets, **additional_image_widgets)
+        image_controls = VBox([x_slider, y_slider, image_band_to_display, *additional_image_widgets.values()])
+        spectrum_controls = VBox([spectrum_band_range, *additional_spectrum_widgets.values()])
+        all_controls = HBox([image_controls, spectrum_controls])
+        output = interactive_plot.children[-1]
+        return VBox([all_controls, output])
             
