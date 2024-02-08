@@ -1,13 +1,13 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import spectral
 from ipywidgets import widgets, interactive, IntSlider
 
 from n2n4m import io
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.postprocessing import calculate_pixel_blandness
 from n2n4m.summary_parameters import IMPLEMENTED_SUMMARY_PARAMETERS
-from crism_ml.io import image_shape
 from crism_ml.preprocessing import remove_spikes_column, ratio
 
 BAND_MASK = np.isin(ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS)
@@ -20,8 +20,9 @@ class CRISMImage:
     ----------
     filepath : str
         Filepath of the image.
-    image : np.ndarray
-        Raw image data.
+    image_array : np.ndarray
+        Array of the image.
+        (n_rows, n_columns, n_wavelengths)
     spatial_dims : tuple
         Spatial dimensions of the image.
         (n_rows, n_columns)
@@ -30,11 +31,20 @@ class CRISMImage:
         (n_rows, n_columns, n_wavelengths)
     im_name : str
         Name of the image.
+    num_bands : int
+        Number of channels in the image.
     summary_parameters : dict
         Dictionary of summary parameters calculated for the image.
+    ratioed_image : np.ndarray
+        Image after being ratioed.
+        Ratioing acheived using GMM from [1] to identify bland pixels.
+        (n_rows, n_columns, n_wavelengths)
 
-    Methods
-    -------
+    References
+    ----------
+    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
+    A machine learning toolkit for CRISM image analysis. 
+    Icarus. 2022 Apr;376:114849. 
 
     """
     def __init__(self, filepath: str):
@@ -42,8 +52,8 @@ class CRISMImage:
         self.filepath = filepath
         self.image_array, self.SPy = self._load_image(self.filepath)
         self.im_shape = self.image_array.shape
-        self.spatial_dims = self.im_shape[:-1]
-        self.num_bands = self.im_shape[-1]
+        self.spatial_dims = (self.im_shape[0], self.im_shape[1])
+        self.num_bands = self.im_shape[2]
 
         self.im_name = self._get_im_name()
         self.summary_parameters = {}
@@ -51,7 +61,8 @@ class CRISMImage:
 
         self.ratioed_image = None
 
-    def _load_image(self, filepath: str) -> dict:
+    def _load_image(self, filepath: str) -> tuple[np.ndarray, spectral.SpyFile]:
+        "Load the image from the filepath."
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File {filepath} not found.")
         try:
@@ -61,14 +72,22 @@ class CRISMImage:
         return image
     
     def _get_im_name(self) -> str:
+        "Clip image acquisition type + hexadecimal number from the filepath."
         im_name = self.filepath.split("/")[-1]
         im_name = im_name.split("_")[0]
         return im_name
 
     def ratio_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
-        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. ALL_WAVELENGTHS are ratioed.
-        
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
+        ALL_WAVELENGTHS are ratioed.
+
+        Parameters
+        ----------
+        train_data_dir : str, optional
+            Directory containing the training data for the GMM.
+            Training data must be called "CRISM_bland_unratioed.mat"
+            Default dir "data". 
         """
         if self.ratioed_image is not None:
             print("Image has already been ratioed.")
@@ -83,7 +102,12 @@ class CRISMImage:
     def calculate_summary_parameter(self, parameter: str) -> None:
         """Calculate summary parameter for the image.
         Uses the ratioed image.
-        
+
+        Parameters
+        ----------
+        parameter : str
+            Summary parameter to calculate.
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.       
         """
         if self.ratioed_image is None:
             raise ValueError("Image must be ratioed before summary parameters can be calculated.")
@@ -96,16 +120,31 @@ class CRISMImage:
         self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS)
         return
     
+    def write_image(self, filepath: str, data: np.ndarray) -> None:
+        """Write the image to a new file. 
+        Uses the original file .hdr and .lbl files to generate the new files.
+
+        Parameters
+        ----------
+        filepath : str
+            Filepath to write the new image to.
+            Must be a .hdr file. The .img and .lbl files will be written with the same name.
+        data : np.ndarray
+            Image to write.      
+        """
+        io.write_image(filepath, data, self.SPy)
+        return None
+    
 
 
 class Visualiser():
 
     def __init__(self, image: CRISMImage):
         self.image = image
+        self.false_colour_im = None
         pass
 
     def get_false_colours(self) -> None:
-        self.false_colour_im = None
         pass
 
     def plot_spectrum(
