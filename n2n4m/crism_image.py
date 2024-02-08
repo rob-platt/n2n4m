@@ -308,13 +308,22 @@ class Visualiser():
         def update_plots(x, y, **kwargs):
 
             fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-            if "band_num" in kwargs:
+            if "dropdown" in kwargs:
+                if kwargs["dropdown"] == "Raw":
+                    if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
+                        band_num = 59
+                    else:
+                        band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
+                    self.plot_image(band_num, ax=ax[0])               
+                else:
+                    self.plot_summary_parameter(kwargs["dropdown"], ax=ax[0])
+            else:
                 if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
                     band_num = 59
                 else:
                     band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
-                self.plot_image(band_num, ax=ax[0])
-            
+                self.plot_image(band_num, ax=ax[0]) 
+                  
             ax[0].scatter(x, y, marker='x', color='red', label="Selected Pixel")
 
             self.plot_spectrum((x, y), ax=ax[1])
@@ -325,6 +334,12 @@ class Visualiser():
         y_slider = IntSlider(min=0, max=self.image.spatial_dims[0]-1, value=0, step=1, description='Y:')
         band_to_display = widgets.Text(value="60", placeholder="1-438", description="Band:", continuous_update=False)
 
+        if self.image.summary_parameters:
+            dropdown_options = list(self.image.summary_parameters.keys())
+            dropdown_options.append("Raw")
+            summary_parameter_dropdown = widgets.Dropdown(options=dropdown_options, value="Raw", description="Image\nOptions:")
+            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, dropdown=summary_parameter_dropdown)
+        else:
+            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, band_num=band_to_display)
         # Create interactive widget
-        interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, band_num=band_to_display)
         return interactive_plot
