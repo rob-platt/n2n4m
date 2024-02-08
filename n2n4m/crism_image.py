@@ -2,6 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import spectral
+import warnings
 from ipywidgets import widgets, interactive, IntSlider
 
 from n2n4m import io
@@ -117,7 +118,7 @@ class CRISMImage:
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
             raise ValueError(f"Summary parameter {parameter} is not implemented.")
         flattened_image = self.ratioed_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
         return
     
     def write_image(self, filepath: str, data: np.ndarray) -> None:
@@ -142,29 +143,87 @@ class Visualiser():
     def __init__(self, image: CRISMImage):
         self.image = image
         self.false_colour_im = None
+        self.bad_value_check_flag = False
+        self.im_array_copy = self.image.image_array # If bad values are detected, a copy will be made and bad values replaced with np.nan.
         pass
+
+    def replace_bad_values(self) -> None:
+        """Replace bad values in the new array with np.nan."""
+        self.im_array_copy[self.im_array_copy > 1000] = np.nan
+        return None
+    
+    def detect_bad_values(self) -> bool:
+        """Check for bad values in the image.
+        Bad values are anything > 1000, so can be used for raw or ratioed imagery.
+        Includes defined CRISM bad value of 65535.
+
+        Returns
+        -------
+        bool
+            True if bad values are present, False otherwise.
+        """
+        if np.any(self.image.image_array > 1000):
+           return True
+
+        self.bad_value_check_flag = True
+        return False
+        
+    def bad_value_check(self) -> None:
+        """Check for bad values in the image.
+        Bad values are anything > 1000, so can be used for raw or ratioed imagery.
+        Includes defined CRISM bad value of 65535.
+        """
+        if self.detect_bad_values():
+            warnings.warn("Bad values detected in the image. A copy has been made, values > 1000 will be replaced with np.nan.")
+            self.im_array_copy = self.image.image_array.copy()
+            self.replace_bad_values()
+        return None
+    
+    def clip_image(self, image: np.ndarray, percentile: float = 99.9) -> np.ndarray:
+        """Function to clip summary parameters for visualisation."""
+        image[image < 0] = 0
+        image[image > np.nanpercentile(image, percentile)] = np.nanpercentile(image, percentile)
+        return image
 
     def get_false_colours(self) -> None:
         pass
 
     def plot_spectrum(
         self,
-        pixel: np.ndarray,
+        pixel_coords: tuple[int, int],
         ax: plt.Axes | None = None,
         title: str | None = None,
-    ) -> None:
-        """Plot spectrum of a pixel (1D)"""
-        if len(pixel.shape) != 1:
-            raise ValueError("Pixel must be 1D.")
+    ) -> plt.Axes:
+        """Plot spectrum of a pixel (1D)
+        
+        Parameters
+        ----------
+        pixel_coords : tuple
+            (x, y) coordinates of the pixel.
+        ax : plt.Axes, optional
+            Axes object to plot the image on.
+            If None, a new figure and axes will be created.
+        title : str, optional
+            Title of the plot.
+            If None, the title will be the name of the image.
+
+        Returns
+        -------
+        plt.Axes
+            Axes object of the plot.    
+        """
+        if not self.bad_value_check_flag:
+            self.bad_value_check()
+        if pixel_coords[0] > self.image.spatial_dims[1] or pixel_coords[1] > self.image.spatial_dims[0]:
+            raise ValueError("Pixel coordinates out of range.")             
         if ax is None:
             fig, ax = plt.subplots(figsize=(4, 2.5))
         else:
             fig = ax.get_figure()
         
-        if len(pixel) == len(ALL_WAVELENGTHS):
-            pixel = pixel[BAND_MASK]
+        pixel = self.im_array_copy[pixel_coords[1], pixel_coords[0]]
         
-        ax.plot(PLEBANI_WAVELENGTHS, pixel)
+        ax.plot(ALL_WAVELENGTHS, pixel)
         ax.set_yticks([])
         ax.set_ylabel("Reflectance (I/F)")
         ax.set_xlabel("Wavelength (μm)")
@@ -175,16 +234,16 @@ class Visualiser():
 
     def plot_image(
         self,
-        image: np.ndarray,
+        band_num: int,
         title: str | None = None,
         ax: plt.Axes | None = None,
     ) -> None:
-        """Plot 2D representation of hyperspectral datacube.
+        """Plot 2D slice of hyperspectral datacube.
         
         Parameters
         ----------
-        image : np.ndarray
-            2D representation of the image.
+        band_num : int
+            Band number to plot.
         title : str, optional
             Title of the plot.
             If None, the title will be the name of the image.
@@ -192,14 +251,16 @@ class Visualiser():
             Axes object to plot the image on.
             If None, a new figure and axes will be created.
         """
-        if len(image.shape) != 2:
-            raise ValueError("Image must be 2D.")
-        
+        if not self.bad_value_check_flag:
+            self.bad_value_check()
+        if band_num > self.image.num_bands or band_num < 0:
+            raise ValueError("Band number out of range.")
         if ax is None:
             fig, ax = plt.subplots()
         else:
             fig = ax.get_figure()
 
+        image = self.im_array_copy[:, :, band_num]
         ax.imshow(image)
         if title is None:
             ax.set_title(self.image.im_name)
@@ -209,25 +270,60 @@ class Visualiser():
         ax.set_axis_off()
         return fig, ax
     
+    def plot_summary_parameter(self, parameter: str, ax: plt.Axes | None = None) -> plt.Axes:
+        """Plot summary parameter for the image.
+        Makes a copy of the summary parameter, clips at 0 and 99th percentile.
+        
+        Parameters
+        ----------
+        parameter : str
+            Summary parameter to plot.
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.
+        ax : plt.Axes, optional
+            Axes object to plot the image on.
+            If None, a new figure and axes will be created.
+
+        Returns
+        -------
+        plt.Axes
+            Axes object of the plot.    
+        """
+        if parameter not in self.image.summary_parameters:
+            raise ValueError(f"Summary parameter {parameter} has not been calculated.")
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.get_figure()
+        parameter_image = self.image.summary_parameters[parameter].copy()
+        parameter_image = self.clip_image(parameter_image)
+
+        ax.imshow(parameter_image)
+        ax.set_title(parameter)
+        ax.set_axis_off()
+        return fig, ax
+    
     def interactive_plot(self) -> interactive:
         """Interactive plot of the image.
         """
-        def update_plots(x, y, band_num):
+        def update_plots(x, y, **kwargs):
 
             fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-            if band_num == "":
-                band_num = 60
-            self.plot_image(self.image.image[:, :, int(band_num)], ax=ax[0])
+            if "band_num" in kwargs:
+                if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
+                    band_num = 59
+                else:
+                    band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
+                self.plot_image(band_num, ax=ax[0])
             
             ax[0].scatter(x, y, marker='x', color='red', label="Selected Pixel")
 
-            self.plot_spectrum(self.image.image[y, x], ax=ax[1])
+            self.plot_spectrum((x, y), ax=ax[1])
 
             plt.tight_layout()
             plt.show()
         x_slider = IntSlider(min=0, max=self.image.spatial_dims[1]-1, value=0, step=1, description='X:')
         y_slider = IntSlider(min=0, max=self.image.spatial_dims[0]-1, value=0, step=1, description='Y:')
-        band_to_display = widgets.Text(value="60", placeholder="0-438", description="Band:", continuous_update=False)
+        band_to_display = widgets.Text(value="60", placeholder="1-438", description="Band:", continuous_update=False)
 
         # Create interactive widget
         interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, band_num=band_to_display)
