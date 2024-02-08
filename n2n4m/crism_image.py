@@ -188,18 +188,92 @@ class Visualiser():
     def get_false_colours(self) -> None:
         pass
 
-    def plot_spectrum(
-        self,
-        pixel_coords: tuple[int, int],
-        ax: plt.Axes | None = None,
-        title: str | None = None,
-    ) -> plt.Axes:
-        """Plot spectrum of a pixel (1D)
+    def plot_false_colours(self) -> None:
+        pass
+
+    def get_spectrum(self, image: np.ndarray, pixel_coords: tuple[int, int]) -> np.ndarray:
+        """Get spectrum of a pixel (1D)
         
         Parameters
         ----------
         pixel_coords : tuple
             (x, y) coordinates of the pixel.
+
+        Returns
+        -------
+        np.ndarray
+            Spectrum of the pixel.    
+        """
+        if not self.bad_value_check_flag:
+            self.bad_value_check()
+        if pixel_coords[0] > image.shape[1] or pixel_coords[1] > image.shape[0]:
+            raise ValueError("Pixel coordinates out of range.")             
+        pixel = image[pixel_coords[1], pixel_coords[0]]
+        return pixel
+    
+    def get_bands(self, bands: tuple[int, int]) -> tuple[float, ...]:
+        """Get which bands to plot for the spectrum.
+        """
+        if bands[0] < 1 or bands[1] > self.image.num_bands or bands[0] > bands[1] or bands[0] == bands[1]:
+            raise ValueError("Band numbers out of range.")
+        return ALL_WAVELENGTHS[bands[0]-1:bands[1]+1] # -1 as python is 0-indexed, and +1 to be inclusive of stop. 
+
+    def get_image(self, band_num: int) -> np.ndarray:
+        """Get 2D slice of hyperspectral datacube.
+        
+        Parameters
+        ----------
+        band_num : int
+            Band number to get.
+
+        Returns
+        -------
+        np.ndarray
+            2D slice of the hyperspectral datacube.    
+        """
+        if not self.bad_value_check_flag:
+            self.bad_value_check()
+        if band_num > self.image.num_bands or band_num < 0:
+            raise ValueError("Band number out of range.")
+        image = self.im_array_copy[:, :, band_num]
+        return image
+    
+    def get_summary_parameter(self, parameter: str) -> np.ndarray:
+        """Get summary parameter for the image. Returns clipped image.
+        
+        Parameters
+        ----------
+        parameter : str
+            Summary parameter to get.
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.
+
+        Returns
+        -------
+        summary_parameter : np.ndarray
+            Summary parameter for the image.    
+        """
+        if parameter not in self.image.summary_parameters:
+            raise ValueError(f"Summary parameter {parameter} has not been calculated.")
+        summary_parameter = self.image.summary_parameters[parameter]
+        summary_parameter = self.clip_image(summary_parameter)
+        return summary_parameter
+
+    def plot_spectrum(
+        self,
+        pixel: np.ndarray,
+        bands: tuple[float, ...],
+        ax: plt.Axes | None = None,
+        title: str | None = None,
+    ) -> plt.Axes:
+        """Plot spectrum of a pixel (1D)
+        Pixel length must match bands length.
+
+        Parameters
+        ----------
+        pixel : np.ndarray
+            Spectrum of the pixel.
+        bands : tuple
+            Wavelengths of the bands.
         ax : plt.Axes, optional
             Axes object to plot the image on.
             If None, a new figure and axes will be created.
@@ -212,29 +286,23 @@ class Visualiser():
         plt.Axes
             Axes object of the plot.    
         """
-        if not self.bad_value_check_flag:
-            self.bad_value_check()
-        if pixel_coords[0] > self.image.spatial_dims[1] or pixel_coords[1] > self.image.spatial_dims[0]:
-            raise ValueError("Pixel coordinates out of range.")             
         if ax is None:
             fig, ax = plt.subplots(figsize=(4, 2.5))
         else:
             fig = ax.get_figure()
         
-        pixel = self.im_array_copy[pixel_coords[1], pixel_coords[0]]
-        
-        ax.plot(ALL_WAVELENGTHS, pixel)
+        ax.plot(bands, pixel)
         ax.set_yticks([])
         ax.set_ylabel("Reflectance (I/F)")
         ax.set_xlabel("Wavelength (μm)")
         if title is None:
-            ax.set_title(f"{self.image.im_name} pixel {pixel_coords}")
+            ax.set_title(f"{self.image.im_name}")
         else: ax.set_title(title)
         return fig, ax
 
     def plot_image(
         self,
-        band_num: int,
+        image: np.ndarray,
         title: str | None = None,
         ax: plt.Axes | None = None,
     ) -> None:
@@ -251,16 +319,11 @@ class Visualiser():
             Axes object to plot the image on.
             If None, a new figure and axes will be created.
         """
-        if not self.bad_value_check_flag:
-            self.bad_value_check()
-        if band_num > self.image.num_bands or band_num < 0:
-            raise ValueError("Band number out of range.")
         if ax is None:
             fig, ax = plt.subplots()
         else:
             fig = ax.get_figure()
 
-        image = self.im_array_copy[:, :, band_num]
         ax.imshow(image)
         if title is None:
             ax.set_title(self.image.im_name)
@@ -270,87 +333,71 @@ class Visualiser():
         ax.set_axis_off()
         return fig, ax
     
-    def plot_summary_parameter(self, parameter: str, ax: plt.Axes | None = None) -> plt.Axes:
-        """Plot summary parameter for the image.
-        Makes a copy of the summary parameter, clips at 0 and 99th percentile.
-        
-        Parameters
-        ----------
-        parameter : str
-            Summary parameter to plot.
-            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.
-        ax : plt.Axes, optional
-            Axes object to plot the image on.
-            If None, a new figure and axes will be created.
-
-        Returns
-        -------
-        plt.Axes
-            Axes object of the plot.    
-        """
-        if parameter not in self.image.summary_parameters:
-            raise ValueError(f"Summary parameter {parameter} has not been calculated.")
-        if ax is None:
-            fig, ax = plt.subplots()
-        else:
-            fig = ax.get_figure()
-        parameter_image = self.image.summary_parameters[parameter].copy()
-        parameter_image = self.clip_image(parameter_image)
-
-        ax.imshow(parameter_image)
-        ax.set_title(parameter)
-        ax.set_axis_off()
-        return fig, ax
-    
     def interactive_plot(self) -> interactive:
         """Interactive plot of the image.
         """
         def update_plots(x, y, **kwargs):
 
             fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+            # Image Plot
             if "dropdown" in kwargs:
                 if kwargs["dropdown"] == "Raw":
                     if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
                         band_num = 59
                     else:
                         band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
-                    self.plot_image(band_num, ax=ax[0])               
+                    image = self.get_image(band_num)
+                    self.plot_image(image, ax=ax[0])               
                 else:
-                    self.plot_summary_parameter(kwargs["dropdown"], ax=ax[0])
+                    image = self.get_summary_parameter(kwargs["dropdown"])
+                    self.plot_image(image, ax=ax[0])
             else: # Default is must have at least passed a raw image.
                 if kwargs["band_num"] == "" or int(kwargs["band_num"]) > self.image.num_bands or int(kwargs["band_num"]) < 1:
                     band_num = 59
                 else:
                     band_num = int(kwargs["band_num"])-1 # -1 as python is 0-indexed
-                self.plot_image(band_num, ax=ax[0]) 
+                image = self.get_image(band_num)
+                self.plot_image(image, ax=ax[0]) 
                   
+            # Add scatter plot of selected pixel to image plot
             ax[0].scatter(x, y, marker='x', color='red', label="Selected Pixel")
 
-            self.plot_spectrum((x, y), ax=ax[1])
+            # Spectrum Plot
+            pixel = self.get_spectrum(self.im_array_copy, (x, y))
+            band_range = format_spectrum_band_range(kwargs["spectrum_range"])
+            bands = self.get_bands(band_range)
+            pixel = pixel[band_range[0]-1:band_range[1]+1] # -1 as python is 0-indexed and +1 to be inclusive of stop.
+            self.plot_spectrum(pixel, bands=bands, ax=ax[1], title=f"{self.image.im_name} - Spectrum at ({x}, {y})")
 
             plt.tight_layout()
             plt.show()
 
         def enable_band_widget(change):
             if change.new == "Raw":
-                band_to_display.disabled = False
-                band_to_display.value = "60"
+                image_band_to_display.disabled = False
+                image_band_to_display.value = "60"
             else:
-                band_to_display.disabled = True
-                band_to_display.value = "N/A"
-            
+                image_band_to_display.disabled = True
+                image_band_to_display.value = "N/A"
+
+        def format_spectrum_band_range(input_str: str):
+            start_band, stop_band = input_str.split("-")
+            return int(start_band), int(stop_band)
+    
+        style = {'description_width': 'initial'}
         x_slider = IntSlider(min=0, max=self.image.spatial_dims[1]-1, value=0, step=1, description='X:')
         y_slider = IntSlider(min=0, max=self.image.spatial_dims[0]-1, value=0, step=1, description='Y:')
-        band_to_display = widgets.Text(value="60", placeholder="1-438", description="Band:", continuous_update=False)
+        image_band_to_display = widgets.Text(value="60", placeholder="1-438", description="Image Band:", style=style, continuous_update=False)
+        spectrum_band_range = widgets.Text(value="1-438", placeholder="1-438", description="Spectrum Band Range:", style=style, continuous_update=False)
 
         if self.image.summary_parameters:
             dropdown_options = list(self.image.summary_parameters.keys())
             dropdown_options.append("Raw")
-            summary_parameter_dropdown = widgets.Dropdown(options=dropdown_options, value="Raw", description="Image\nOptions:")
+            summary_parameter_dropdown = widgets.Dropdown(options=dropdown_options, value="Raw", description="Image Options:", style=style)
             summary_parameter_dropdown.observe(enable_band_widget, names='value')
-            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, dropdown=summary_parameter_dropdown, band_num=band_to_display)
+            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, spectrum_range=spectrum_band_range, dropdown=summary_parameter_dropdown, band_num=image_band_to_display)
         else:
-            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, band_num=band_to_display)
+            interactive_plot = interactive(update_plots, x=x_slider, y=y_slider, spectrum_range=spectrum_band_range, band_num=image_band_to_display)
         
         return interactive_plot
             
