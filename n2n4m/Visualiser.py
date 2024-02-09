@@ -52,7 +52,7 @@ class Visualiser():
         image[image > np.nanpercentile(image, percentile)] = np.nanpercentile(image, percentile)
         return image
 
-    def get_spectrum(self, image: np.ndarray, pixel_coords: tuple[int, int]) -> np.ndarray:
+    def get_spectrum(self, pixel_coords: tuple[int, int]) -> np.ndarray:
         """Get spectrum of a pixel (1D)
         
         Parameters
@@ -67,9 +67,9 @@ class Visualiser():
         """
         if not self.bad_value_check_flag:
             self.bad_value_check()
-        if pixel_coords[0] > image.shape[1] or pixel_coords[1] > image.shape[0]:
+        if pixel_coords[0] > self.im_array_copy.shape[1] or pixel_coords[1] > self.im_array_copy.shape[0]:
             raise ValueError("Pixel coordinates out of range.")             
-        pixel = image[pixel_coords[1], pixel_coords[0]]
+        pixel = self.im_array_copy[pixel_coords[1], pixel_coords[0]]
         return pixel
     
     def get_bands(self, bands: tuple[int, int]) -> tuple[float, ...]:
@@ -221,9 +221,9 @@ class Visualiser():
             # Spectrum Plot
             # Options are ratioed or raw, if ratioed, must have a ratioed image.
             # If option is not ratioed, then would be same as if ratioed not in kwargs.
-            pixel = self.get_spectrum(self.im_array_copy, (x, y)) 
+            pixel = self.get_spectrum((x, y)) 
             if "ratio" in kwargs and kwargs["ratio"] == "Ratioed":
-                pixel = self.get_spectrum(self.image.ratioed_image, (x, y))
+                pixel = self.get_spectrum((x, y))
             band_range = format_spectrum_band_range(spectrum_range)
             bands = self.get_bands(band_range)
             pixel = pixel[band_range[0]-1:band_range[1]+1] # -1 as python is 0-indexed and +1 to be inclusive of stop.
