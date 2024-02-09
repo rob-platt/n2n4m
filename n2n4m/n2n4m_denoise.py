@@ -106,7 +106,7 @@ def combine_bands(
     return spectra
 
 
-def load_scaler(filepath: str) -> BaseEstimator:
+def load_scaler(filepath: str = DEFAULT_SCALER_FILEPATH) -> BaseEstimator:
     """Load a fitted sklearn scaler object from a pickle file.
 
     Parameters
@@ -130,7 +130,7 @@ def load_scaler(filepath: str) -> BaseEstimator:
     return scaler
 
 
-def instantiate_default_model(filepath: str) -> Noise2Noise1D:
+def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH) -> Noise2Noise1D:
     """Load a trained Noise2Noise1D model from a file.
 
     Parameters
