@@ -9,6 +9,10 @@ from n2n4m.postprocessing import calculate_pixel_blandness
 from crism_ml.preprocessing import remove_spikes_column, ratio
 
 from n2n4m.cotcat_denoise import cotcat_denoise
+from n2n4m.n2n4m_denoise import load_scaler, clip_bands, create_dataloader, combine_bands
+from n2n4m.model import Noise2Noise1D
+from n2n4m.model_functions import predict, check_available_device
+from torch import device
 
 
 BAND_MASK = np.isin(ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS)
@@ -175,8 +179,18 @@ class CRISMImageDenoise(CRISMImage):
     def __init__(self, filepath: str):
         super().__init__(filepath)
     
+        self.n2n4m_scaler = None
+        self.n2n4m_model = None
         self.cotcat_denoised_image = None
         self.n2n4m_denoised_image = None
+
+    def load_n2n4m_scaler(self, filepath:str) -> None:
+        self.n2n4m_scaler = load_scaler(filepath)
+        return None
+    
+    def load_n2n4m_model(self, model: Noise2Noise1D) -> None:
+        self.n2n4m_model = model
+        return None
 
     def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
         """Apply CoTCAT denoising to the image.
@@ -188,9 +202,30 @@ class CRISMImageDenoise(CRISMImage):
             return
         
         self.cotcat_denoised_image = cotcat_denoise(self.image_array, wavelengths)
+        return None
+    
+    def n2n4m_denoise(self, batch_size: int = 1000) -> None:
+        if self.n2n4m_scaler == None:
+            raise ValueError("A scaler object must be loaded before denoising.")
+        if self.n2n4m_model == None:
+            raise ValueError("An instantiated Noise2Noise1D model must be loaded before denoising.")
+        
+        spectra = self.image_array.reshape(-1, self.num_bands) # Model functions expect flattened spatial dims
+        bands_to_denoise, additional_bands = clip_bands(spectra)
+        bands_to_denoise = self.n2n4m_scaler.transform(bands_to_denoise)
+        spectra_dataloader = create_dataloader(bands_to_denoise, batch_size=batch_size)
 
-    def n2n4m_denoise(self):
-        pass
+        denoised_spectra = predict(
+            self.n2n4m_model, spectra_dataloader, device(check_available_device())
+        )
+        if check_available_device() == "cuda":
+            denoised_spectra = denoised_spectra.cpu().numpy()
+        else:
+            denoised_spectra = denoised_spectra.numpy()
+        denoised_spectra = combine_bands(denoised_spectra, additional_bands)
+        self.n2n4m_denoised_image = denoised_spectra.reshape(*self.im_shape)
+        return None
+
 
 
 
