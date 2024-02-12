@@ -201,12 +201,12 @@ def denoise_image(
         Default 1000
     """
 
-    image = load_image(image_filepath)
-    im_shape = image_shape(image)
-    spectra = image["IF"]
+    im_array, im_hdr = load_image(image_filepath)
+    scaler = load_scaler(scaler_filepath) 
+    im_shape = im_array.shape
+    spectra = im_array.reshape(-1, im_shape[-1]) # Model functions expect flattened spatial dims
     bands_to_denoise, additional_bands = clip_bands(spectra)
 
-    scaler = load_scaler(scaler_filepath)
     bands_to_denoise = scaler.transform(bands_to_denoise)
 
     if model is None:
@@ -222,4 +222,5 @@ def denoise_image(
     else:
         denoised_spectra = denoised_spectra.numpy()
     denoised_spectra = combine_bands(denoised_spectra, additional_bands)
-    return denoised_spectra
+    denoised_image = denoised_spectra.reshape(*im_shape)
+    return denoised_image
