@@ -1,6 +1,6 @@
 # Module to run N2N denoising across an entire image. Should allow for CLI usage. Input trained model as instance of Noise2Noise1D class, with weights loaded, image, and output numpy array of denoised image, with extra bands inserted back from original image.
 import numpy as np
-import pickle
+from joblib import load
 from sklearn.utils.validation import check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.base import BaseEstimator
@@ -107,12 +107,12 @@ def combine_bands(
 
 
 def load_scaler(filepath: str = DEFAULT_SCALER_FILEPATH) -> BaseEstimator:
-    """Load a fitted sklearn scaler object from a pickle file.
+    """Load a fitted sklearn scaler object from a joblib file.
 
     Parameters
     ----------
     filepath : str
-        The filepath to the pickle file.
+        The filepath to the joblib file.
 
     Returns
     -------
@@ -120,7 +120,7 @@ def load_scaler(filepath: str = DEFAULT_SCALER_FILEPATH) -> BaseEstimator:
         The loaded scaler object.
     """
     with open(filepath, "rb") as f:
-        scaler = pickle.load(f)
+        scaler = load(f)
 
     # check if the loaded object is a scaler and if it is fitted
     try:
