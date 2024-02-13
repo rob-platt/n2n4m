@@ -295,7 +295,7 @@ def detect_artefact(
         return False
 
 
-def impute_artefacts(
+def impute_atmospheric_artefacts(
     dataset: pd.DataFrame,
     lower_bound: float = 1.91487,
     upper_bound: float = 2.08645,
