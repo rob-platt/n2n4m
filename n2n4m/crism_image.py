@@ -85,6 +85,7 @@ class CRISMImage:
 
     def ratio_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
+        Bad values (65535) are imputed before ratioing.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
         ALL_WAVELENGTHS are ratioed.
 
@@ -101,7 +102,8 @@ class CRISMImage:
         flattened_image = self.image_array.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
         pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        despiked_image = remove_spikes_column(self.image_array.copy(), size=3, sigma=5)
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.image_array)
+        despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_image = ratio(despiked_image, pixel_blandness)
         return 
 
@@ -142,7 +144,92 @@ class CRISMImage:
         return None
     
 
-class CRISMImageDenoise(CRISMImage):
+class CRISMImageCotcat(CRISMImage):
+    """
+    Class for denoising CRISM images with CoTCAT [2].
+
+    Attributes
+    ----------
+    filepath : str
+        Filepath of the image.
+    image_array : np.ndarray
+        Array of the image.
+        (n_rows, n_columns, n_wavelengths)
+    spatial_dims : tuple
+        Spatial dimensions of the image.
+        (n_rows, n_columns)
+    im_shape : tuple
+        Shape of the image.
+        (n_rows, n_columns, n_wavelengths)
+    im_name : str
+        Name of the image.
+    num_bands : int
+        Number of channels in the image.
+    summary_parameters : dict
+        Dictionary of summary parameters calculated for the image.
+    cotcat_denoised_image : np.ndarray
+        Image after being denoised with CoTCAT.
+        (n_rows, n_columns, n_wavelengths)
+    ratioed_image : np.ndarray
+        CoTCAT denoised image after being ratioed.
+        Ratioing acheived using GMM from [1] to identify bland pixels.
+        (n_rows, n_columns, n_wavelengths)
+
+    References
+    ----------
+    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
+    A machine learning toolkit for CRISM image analysis. 
+    Icarus. 2022 Apr;376:114849.
+    2. Bultel B, Quantin C, Lozac'h L. 
+    Description of CoTCAT (Complement to CRISM Analysis Toolkit).
+    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing. 
+    2015 Jun;8(6):3039-49. 
+
+    """
+    def __init__(self, filepath: str):
+        super().__init__(filepath)
+        self.cotcat_denoised_image = None
+
+    def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
+        """Apply CoTCAT denoising to the image.
+        """
+        if self.num_bands != len(wavelengths):
+            raise ValueError(f"Number of bands in image: {self.num_bands} does not match number of wavelengths: {len(wavelengths)}.")
+        if self.cotcat_denoised_image is not None:
+            print("Image has already been denoised using CoTCAT.")
+            return
+        
+        self.cotcat_denoised_image = cotcat_denoise(self.image_array, wavelengths)
+        return None
+    
+    def ratio_image(self, train_data_dir: str = "data") -> None:
+        """Ratio the image using the Plebani bland pixel model.
+        Bad values (65535) are imputed before ratioing.
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
+        ALL_WAVELENGTHS are ratioed.
+
+        Parameters
+        ----------
+        train_data_dir : str, optional
+            Directory containing the training data for the GMM.
+            Training data must be called "CRISM_bland_unratioed.mat"
+            Default dir "data". 
+        """
+        if self.ratioed_image is not None:
+            print("Image has already been ratioed.")
+            return
+        if self.cotcat_denoised_image is None:
+            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use the parent class CRISMImage.")
+        flattened_image = self.cotcat_denoised_image.reshape(-1, self.num_bands)
+        flattened_image_clipped = flattened_image[:, BAND_MASK]
+        pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.cotcat_denoised_image)
+        despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
+        self.ratioed_image = ratio(despiked_image, pixel_blandness)
+        return 
+    
+
+class CRISMImageN2N4M(CRISMImage):
     """
     Class for denoising CRISM images.
 
@@ -165,8 +252,15 @@ class CRISMImageDenoise(CRISMImage):
         Number of channels in the image.
     summary_parameters : dict
         Dictionary of summary parameters calculated for the image.
+    n2n4m_scaler : object
+        Scaler object for the Noise2Noise1D model.
+    n2n4m_model : object
+        Noise2Noise1D model.
+    n2n4m_denoised_image : np.ndarray
+        Image after being denoised with Noise2Noise1D.
+        (n_rows, n_columns, n_wavelengths)
     ratioed_image : np.ndarray
-        Image after being ratioed.
+        N2N4M denoised image after being ratioed.
         Ratioing acheived using GMM from [1] to identify bland pixels.
         (n_rows, n_columns, n_wavelengths)
 
@@ -182,7 +276,6 @@ class CRISMImageDenoise(CRISMImage):
     
         self.n2n4m_scaler = None
         self.n2n4m_model = None
-        self.cotcat_denoised_image = None
         self.n2n4m_denoised_image = None
 
     def load_n2n4m_scaler(self, filepath:str | None = None) -> None:
@@ -198,17 +291,6 @@ class CRISMImageDenoise(CRISMImage):
         self.n2n4m_model = model
         return None
 
-    def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
-        """Apply CoTCAT denoising to the image.
-        """
-        if self.num_bands != len(wavelengths):
-            raise ValueError(f"Number of bands in image: {self.num_bands} does not match number of wavelengths: {len(wavelengths)}.")
-        if self.cotcat_denoised_image is not None:
-            print("Image has already been denoised using CoTCAT.")
-            return
-        
-        self.cotcat_denoised_image = cotcat_denoise(self.image_array, wavelengths)
-        return None
     
     def n2n4m_denoise(self, batch_size: int = 1000) -> None:
         if self.n2n4m_scaler == None:
@@ -233,6 +315,31 @@ class CRISMImageDenoise(CRISMImage):
         self.n2n4m_denoised_image = denoised_spectra.reshape(*self.im_shape)
         return None
 
+    def ratio_image(self, train_data_dir: str = "data") -> None:
+        """Ratio the image using the Plebani bland pixel model.
+        Bad values (65535) are imputed before ratioing.
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
+        ALL_WAVELENGTHS are ratioed.
+
+        Parameters
+        ----------
+        train_data_dir : str, optional
+            Directory containing the training data for the GMM.
+            Training data must be called "CRISM_bland_unratioed.mat"
+            Default dir "data". 
+        """
+        if self.ratioed_image is not None:
+            print("Image has already been ratioed.")
+            return
+        if self.n2n4m_denoised_image is None:
+            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use the parent class CRISMImage.")
+        flattened_image = self.n2n4m_denoised_image.reshape(-1, self.num_bands)
+        flattened_image_clipped = flattened_image[:, BAND_MASK]
+        pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.n2n4m_denoised_image)
+        despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
+        self.ratioed_image = ratio(despiked_image, pixel_blandness)
+        return 
 
 
 
