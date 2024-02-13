@@ -102,10 +102,10 @@ def calculate_pixel_blandness(
     bland_model = (  # Train bland model using the unratioed bland pixel dataset
         train_model_bland(train_set_dir, fin0)
     )
-    spectra, bad_pixel_mask = filter_bad_pixels(spectra)
+    filtered_spectra, bad_pixel_mask = filter_bad_pixels(spectra, copy=True)
 
     despiked_spectra = remove_spikes_column(  # Remove spikes using a median filter with window size 3, removing spikes larger than 5 std dev. Calculated per column
-        spectra.reshape(*im_shape, -1), size=3, sigma=5
+        filtered_spectra.reshape(*im_shape, -1), size=3, sigma=5
     ).reshape(
         spectra.shape
     )
