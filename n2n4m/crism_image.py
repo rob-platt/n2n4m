@@ -9,9 +9,10 @@ from n2n4m.postprocessing import calculate_pixel_blandness
 from crism_ml.preprocessing import remove_spikes_column, ratio
 
 from n2n4m.cotcat_denoise import cotcat_denoise
-from n2n4m.n2n4m_denoise import load_scaler, clip_bands, create_dataloader, combine_bands
+from n2n4m.n2n4m_denoise import load_scaler, clip_bands, create_dataloader, combine_bands, instantiate_default_model
 from n2n4m.model import Noise2Noise1D
 from n2n4m.model_functions import predict, check_available_device
+import n2n4m.preprocessing as preprocessing
 from torch import device
 
 
@@ -184,11 +185,16 @@ class CRISMImageDenoise(CRISMImage):
         self.cotcat_denoised_image = None
         self.n2n4m_denoised_image = None
 
-    def load_n2n4m_scaler(self, filepath:str) -> None:
-        self.n2n4m_scaler = load_scaler(filepath)
+    def load_n2n4m_scaler(self, filepath:str | None = None) -> None:
+        if filepath:
+            self.n2n4m_scaler = load_scaler(filepath)
+        else: 
+            self.n2n4m_scaler = load_scaler()
         return None
     
-    def load_n2n4m_model(self, model: Noise2Noise1D) -> None:
+    def load_n2n4m_model(self, model: Noise2Noise1D | None = None) -> None:
+        if model == None:
+            model = instantiate_default_model()
         self.n2n4m_model = model
         return None
 
@@ -212,6 +218,7 @@ class CRISMImageDenoise(CRISMImage):
         
         spectra = self.image_array.reshape(-1, self.num_bands) # Model functions expect flattened spatial dims
         bands_to_denoise, additional_bands = clip_bands(spectra)
+        bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(bands_to_denoise) # Impute bad values
         bands_to_denoise = self.n2n4m_scaler.transform(bands_to_denoise)
         spectra_dataloader = create_dataloader(bands_to_denoise, batch_size=batch_size)
 
@@ -219,7 +226,7 @@ class CRISMImageDenoise(CRISMImage):
             self.n2n4m_model, spectra_dataloader, device(check_available_device())
         )
         if check_available_device() == "cuda":
-            denoised_spectra = denoised_spectra.cpu().numpy()
+            denoised_spectra = denoised_spectra.detach().numpy()
         else:
             denoised_spectra = denoised_spectra.numpy()
         denoised_spectra = combine_bands(denoised_spectra, additional_bands)

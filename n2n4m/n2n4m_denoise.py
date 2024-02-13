@@ -13,12 +13,12 @@ import importlib.resources
 from n2n4m.model_functions import predict, check_available_device
 from n2n4m.model import Noise2Noise1D
 from n2n4m.io import load_image
+import n2n4m.preprocessing as preprocessing
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
-from crism_ml.io import image_shape
 
 
 DEFAULT_MODEL_FILEPATH = importlib.resources.files("n2n4m") / "data/trained_model_weights.pt"
-DEFAULT_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/input_standardiser.pkl"
+DEFAULT_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/n2n4m_feature_scaler.joblib"
 
 
 def band_index_mask(
@@ -206,6 +206,7 @@ def denoise_image(
     im_shape = im_array.shape
     spectra = im_array.reshape(-1, im_shape[-1]) # Model functions expect flattened spatial dims
     bands_to_denoise, additional_bands = clip_bands(spectra)
+    bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(bands_to_denoise) # Impute bad values
 
     bands_to_denoise = scaler.transform(bands_to_denoise)
 
