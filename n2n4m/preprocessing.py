@@ -221,15 +221,17 @@ def impute_bad_values_in_image(image: np.ndarray, threshold: float = 1.0) -> tup
     ----------
     image : np.ndarray
         The image to impute the bad values in.
+        Shape (n_rows, n_columns, n_bands) or (n_pixels, n_bands)
     threshold : float
         The threshold to use to detect bad values.
-        Default: 1
+        Default: 1.0
 
     Returns
     -------
-    image : np.ndarray
-        The image with the bad values imputed.
-    
+    image_copy : np.ndarray
+        A copy of the image with the bad values imputed.
+    bad_value_mask : np.ndarray
+        A mask of the bad values in the image.    
     """
     image_copy = image.copy()
     image_shape = image_copy.shape
