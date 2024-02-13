@@ -153,6 +153,19 @@ def test_impute_bad_values(expanded_data: DataFrame):
     )  # Different image, different class
 
 
+def test_impute_bad_values_in_image(expanded_data: DataFrame):
+    spectra = expanded_data.drop(columns=preprocessing.LABEL_COLS).values
+    spectra = spectra[:-1].reshape(3, 3, 10) # reshape spectra to 3x3x10 (1 image of 3x3 pixels, 10 bands)
+    spectra_copy = spectra.copy() # copy of spectra to compare
+    threshold = 1
+    imputed_spectra, bad_value_mask = preprocessing.impute_bad_values_in_image(spectra, threshold=threshold)
+    assert type(imputed_spectra) == np.ndarray
+    assert np.equal(spectra, spectra_copy).all() # Check that the operation is copied not in place.
+    assert imputed_spectra.shape == spectra.shape
+    assert np.count_nonzero(imputed_spectra > threshold) == 0 # Check all values are imputed
+    assert np.isclose(imputed_spectra[0,0,0], 0.15714286) # Check imputed value is mean of that band across image.
+
+
 def test_get_linear_interp_spectra(expanded_data: DataFrame):
     bands = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
     sample_spectra = expanded_data.iloc[8, 3:].values.astype(
@@ -204,9 +217,9 @@ def test_detect_artefact(expanded_data: DataFrame):
     )  # Change boundary threshold
 
 
-def test_impute_artefacts(expanded_data: DataFrame):
+def test_impute_atmospheric_artefacts(expanded_data: DataFrame):
     bands = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-    imputed_data = preprocessing.impute_artefacts(
+    imputed_data = preprocessing.impute_atmospheric_artefacts(
         expanded_data, lower_bound=0, upper_bound=6, wavelengths=bands, threshold=0.5
     )
     assert type(imputed_data) == pd.DataFrame

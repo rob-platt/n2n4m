@@ -212,6 +212,36 @@ def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataF
     return dataset
 
 
+def impute_bad_values_in_image(image: np.ndarray, threshold: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Impute any bad values in an image with the mean of that band for the image.
+    Returns a copy of the image with the bad values imputed.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        The image to impute the bad values in.
+    threshold : float
+        The threshold to use to detect bad values.
+        Default: 1
+
+    Returns
+    -------
+    image : np.ndarray
+        The image with the bad values imputed.
+    
+    """
+    image_copy = image.copy()
+    image_shape = image_copy.shape
+    image_copy = image_copy.reshape(-1, image_shape[-1]) # flatten spatial dimensions
+    image_copy = np.where(image_copy > threshold, np.nan, image_copy)
+    bad_value_mask = np.isnan(image_copy)
+    bad_value_mask = bad_value_mask.reshape(image_shape)
+    image_copy = np.nan_to_num(image_copy, nan=np.nanmean(image_copy, axis=0))
+    image_copy = image_copy.reshape(image_shape)
+    return image_copy, bad_value_mask
+
+
 def get_linear_interp_spectra(
     spectra: np.ndarray,
     lower_bound: float = 1.91487,
@@ -580,9 +610,10 @@ def standardise(
         else:
             raise ValueError("The given method is not supported.")
         scaler.fit(dataset)
-
+    
+    scaled_data = scaler.transform(dataset)
     scaled_dataset = pd.DataFrame(
-        scaler.transform(dataset), columns=dataset.columns, index=dataset.index
+        scaled_data, columns=dataset.columns, index=dataset.index
     )
     return scaled_dataset, scaler
 
@@ -636,3 +667,5 @@ def inverse_standardise(
         raise TypeError("The given dataset type is not supported.")
 
     return dataset
+
+
