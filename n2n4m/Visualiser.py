@@ -236,6 +236,11 @@ class Visualiser:
 
         ax.set_axis_off()
         return fig, ax
+    
+class InteractiveVisualiser(Visualiser):
+    """Class to create interactive visualisations of CRISM images."""
+    def __init__(self, image: CRISMImage):
+        super().__init__(image)
 
     def interactive_plot(self) -> interactive | VBox | HBox:
         """Interactive plot of the image and spectrum."""
