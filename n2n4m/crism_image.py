@@ -188,21 +188,22 @@ class CRISMImageCotcat(CRISMImage):
     """
     def __init__(self, filepath: str):
         super().__init__(filepath)
-        self.cotcat_denoised_image = None
+        self.denoised_image = None
+        self.ratioed_denoised_image = None
 
     def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
         """Apply CoTCAT denoising to the image.
         """
         if self.num_bands != len(wavelengths):
             raise ValueError(f"Number of bands in image: {self.num_bands} does not match number of wavelengths: {len(wavelengths)}.")
-        if self.cotcat_denoised_image is not None:
+        if self.denoised_image is not None:
             print("Image has already been denoised using CoTCAT.")
             return
         
-        self.cotcat_denoised_image = cotcat_denoise(self.image_array, wavelengths)
+        self.denoised_image = cotcat_denoise(self.image_array, wavelengths)
         return None
     
-    def ratio_image(self, train_data_dir: str = "data") -> None:
+    def ratio_cotcat_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
@@ -215,18 +216,39 @@ class CRISMImageCotcat(CRISMImage):
             Training data must be called "CRISM_bland_unratioed.mat"
             Default dir "data". 
         """
-        if self.ratioed_image is not None:
+        if self.cotcat_ratioed_image is not None:
             print("Image has already been ratioed.")
             return
-        if self.cotcat_denoised_image is None:
-            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use the parent class CRISMImage.")
-        flattened_image = self.cotcat_denoised_image.reshape(-1, self.num_bands)
+        if self.denoised_image is None:
+            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use ratio_image.")
+        flattened_image = self.denoised_image.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
         pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.cotcat_denoised_image)
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.denoised_image)
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
-        self.ratioed_image = ratio(despiked_image, pixel_blandness)
+        self.ratioed_denoised_image = ratio(despiked_image, pixel_blandness)
         return 
+    
+    def calculate_summary_parameter(self, parameter: str) -> None:
+        """Calculate summary parameter for the image.
+        Uses the CoTCAT-denoised, ratioed image.
+
+        Parameters
+        ----------
+        parameter : str
+            Summary parameter to calculate.
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.       
+        """
+        if self.ratioed_denoised_image is None:
+            raise ValueError("Image must be ratioed before summary parameters can be calculated.")
+        if parameter in self.summary_parameters:
+            print(f"{parameter} has already been calculated.")
+            return
+        if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
+            raise ValueError(f"Summary parameter {parameter} is not implemented.")
+        flattened_image = self.ratioed_denoised_image.reshape(-1, self.num_bands)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
+        return
     
 
 class CRISMImageN2N4M(CRISMImage):
@@ -276,7 +298,8 @@ class CRISMImageN2N4M(CRISMImage):
     
         self.n2n4m_scaler = None
         self.n2n4m_model = None
-        self.n2n4m_denoised_image = None
+        self.denoised_image = None
+        self.ratioed_denoised_image = None
 
     def load_n2n4m_scaler(self, filepath:str | None = None) -> None:
         if filepath:
@@ -312,10 +335,10 @@ class CRISMImageN2N4M(CRISMImage):
         else:
             denoised_spectra = denoised_spectra.numpy()
         denoised_spectra = combine_bands(denoised_spectra, additional_bands)
-        self.n2n4m_denoised_image = denoised_spectra.reshape(*self.im_shape)
+        self.denoised_image = denoised_spectra.reshape(*self.im_shape)
         return None
 
-    def ratio_image(self, train_data_dir: str = "data") -> None:
+    def ratio_n2n4m_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
@@ -328,18 +351,39 @@ class CRISMImageN2N4M(CRISMImage):
             Training data must be called "CRISM_bland_unratioed.mat"
             Default dir "data". 
         """
-        if self.ratioed_image is not None:
+        if self.ratioed_denoised_image is not None:
             print("Image has already been ratioed.")
             return
-        if self.n2n4m_denoised_image is None:
-            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use the parent class CRISMImage.")
-        flattened_image = self.n2n4m_denoised_image.reshape(-1, self.num_bands)
+        if self.denoised_image is None:
+            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use ratio_image().")
+        flattened_image = self.denoised_image.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
         pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.n2n4m_denoised_image)
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.denoised_image)
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
-        self.ratioed_image = ratio(despiked_image, pixel_blandness)
+        self.ratioed_denoised_image = ratio(despiked_image, pixel_blandness)
         return 
+    
+    def calculate_summary_parameter(self, parameter: str) -> None:
+        """Calculate summary parameter for the image.
+        Uses the N2N4M-denoised, ratioed image.
+
+        Parameters
+        ----------
+        parameter : str
+            Summary parameter to calculate.
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.       
+        """
+        if self.ratioed_denoised_image is None:
+            raise ValueError("Image must be ratioed before summary parameters can be calculated.")
+        if parameter in self.summary_parameters:
+            print(f"{parameter} has already been calculated.")
+            return
+        if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
+            raise ValueError(f"Summary parameter {parameter} is not implemented.")
+        flattened_image = self.ratioed_denoised_image.reshape(-1, self.num_bands)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
+        return
 
 
 
