@@ -2,26 +2,29 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-from n2n4m.crism_image import CRISMImage
+from n2n4m.crism_image import CRISMImage, CRISMImageCotcat, CRISMImageN2N4M
 from n2n4m.wavelengths import ALL_WAVELENGTHS
 from ipywidgets import widgets, interactive, HBox, VBox
 
 
 class Visualiser:
 
-    def __init__(self, image: CRISMImage):
+    def __init__(self, image: CRISMImage | CRISMImageCotcat | CRISMImageN2N4M):
         self.image = image
-        self.bad_value_check_flag = False
-        self.im_array_copy = (
+        self.raw_image_bad_value_check_flag = False
+        self.raw_image_copy = (
             self.image.image_array
         )  # If bad values are detected, a copy will be made and bad values replaced with np.nan.
+        if self.image.ratioed_image is not None:
+            self.ratioed_image_bad_value_check_flag = False
+            self.ratioed_image_copy = self.image.ratioed_image
 
-    def replace_bad_values(self) -> None:
+    def replace_bad_values(self, array: np.ndarray) -> None:
         """Replace bad values in the new array with np.nan."""
-        self.im_array_copy[self.im_array_copy > 1000] = np.nan
+        array[array > 1000] = np.nan
         return None
 
-    def detect_bad_values(self) -> bool:
+    def detect_bad_values(self, array: np.ndarray) -> bool:
         """Check for bad values in the image.
         Bad values are anything > 1000, so can be used for raw or ratioed imagery.
         Includes defined CRISM bad value of 65535.
@@ -31,23 +34,33 @@ class Visualiser:
         bool
             True if bad values are present, False otherwise.
         """
-        if np.any(self.image.image_array > 1000):
+        if np.any(array > 1000):
             return True
-
-        self.bad_value_check_flag = True
         return False
 
-    def bad_value_check(self) -> None:
+    def bad_value_check(self, array: np.ndarray) -> np.ndarray:
         """Check for bad values in the image.
         Bad values are anything > 1000, so can be used for raw or ratioed imagery.
         Includes defined CRISM bad value of 65535.
         """
-        if self.detect_bad_values():
+        if self.detect_bad_values(array):
             warnings.warn(
                 "Bad values detected in the image. A copy has been made, values > 1000 will be replaced with np.nan."
             )
-            self.im_array_copy = self.image.image_array.copy()
-            self.replace_bad_values()
+            array_copy = array.copy()
+            self.replace_bad_values(array_copy)
+        return array_copy
+    
+    def bad_value_check_raw_image(self) -> None:
+        """Check for bad values in the raw image."""
+        self.raw_image_bad_value_check_flag = True
+        self.raw_image_copy = self.bad_value_check(self.raw_image_copy)
+        return None
+    
+    def bad_value_check_ratioed_image(self) -> None:
+        """Check for bad values in the ratioed image."""
+        self.ratioed_image_bad_value_check_flag = True
+        self.ratioed_image_copy = self.bad_value_check(self.ratioed_image_copy)
         return None
 
     def clip_image(self, image: np.ndarray, percentile: float = 99.9) -> np.ndarray:
@@ -71,14 +84,14 @@ class Visualiser:
         np.ndarray
             Spectrum of the pixel.
         """
-        if not self.bad_value_check_flag:
-            self.bad_value_check()
+        if not self.raw_image_bad_value_check_flag:
+            self.bad_value_check_raw_image()
         if (
-            pixel_coords[0] > self.im_array_copy.shape[1]
-            or pixel_coords[1] > self.im_array_copy.shape[0]
+            pixel_coords[0] > self.raw_image_copy.shape[1]
+            or pixel_coords[1] > self.raw_image_copy.shape[0]
         ):
             raise ValueError("Pixel coordinates out of range.")
-        pixel = self.im_array_copy[pixel_coords[1], pixel_coords[0]]
+        pixel = self.raw_image_copy[pixel_coords[1], pixel_coords[0]]
         return pixel
 
     def get_ratioed_spectrum(self, pixel_coords: tuple[int, int]) -> np.ndarray:
@@ -96,6 +109,8 @@ class Visualiser:
         """
         if type(self.image.ratioed_image) != np.ndarray:
             raise ValueError("No ratioed image available.")
+        if not self.ratioed_image_bad_value_check_flag:
+            self.bad_value_check_ratioed_image()
         if (
             pixel_coords[0] > self.image.ratioed_image.shape[1]
             or pixel_coords[1] > self.image.ratioed_image.shape[0]
@@ -130,11 +145,11 @@ class Visualiser:
         np.ndarray
             2D slice of the hyperspectral datacube.
         """
-        if not self.bad_value_check_flag:
-            self.bad_value_check()
+        if not self.raw_image_bad_value_check_flag:
+            self.bad_value_check_raw_image()
         if band_num > self.image.num_bands or band_num < 0:
             raise ValueError("Band number out of range.")
-        image = self.im_array_copy[:, :, band_num]
+        image = self.raw_image_copy[:, :, band_num]
         return image
 
     def get_summary_parameter(self, parameter: str) -> np.ndarray:
@@ -236,6 +251,106 @@ class Visualiser:
 
         ax.set_axis_off()
         return fig, ax
+    
+
+class DenoisedVisualiser(Visualiser):
+    """Class to create visualisations of denoised CRISM images."""
+    def __init__(self, image: CRISMImageCotcat | CRISMImageN2N4M):
+        if type(image) == CRISMImage:
+            raise ValueError("DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser.")
+        if image.denoised_image is None:
+            raise ValueError("No denoised image available.")
+        super().__init__(image)
+        self.denoised_bad_value_check_flag = False
+        self.denoised_copy = (
+            self.image.denoised_image
+        )
+        if self.image.ratioed_denoised_image is not None:
+            self.ratioed_denoised_bad_value_check_flag = False
+            self.ratioed_denoised_copy = (
+                self.image.ratioed_denoised_image
+            )
+        
+    def bad_value_check_denoised(self) -> None:
+        """Check for bad values in the denoised image."""
+        self.denoised_bad_value_check_flag = True
+        self.denoised_copy = self.bad_value_check(self.denoised_copy)
+        return None
+
+    def bad_value_check_ratioed_denoised(self) -> None:
+        """Check for bad values in the ratioed denoised image."""
+        self.ratioed_denoised_bad_value_check_flag = True
+        self.ratioed_denoised_copy = self.bad_value_check(self.ratioed_denoised_copy)
+        return None
+
+    def get_denoised_spectrum(self, pixel_coords: tuple[int, int]) -> np.ndarray:
+        """Get spectrum of a denoised pixel (1D)
+
+        Parameters
+        ----------
+        pixel_coords : tuple
+            (x, y) coordinates of the pixel.
+
+        Returns
+        -------
+        np.ndarray
+            Spectrum of the pixel.
+        """
+        if not self.denoised_bad_value_check_flag:
+            self.bad_value_check_denoised()
+        if (
+            pixel_coords[0] > self.denoised_copy.shape[1]
+            or pixel_coords[1] > self.denoised_copy.shape[0]
+        ):
+            raise ValueError("Pixel coordinates out of range.")
+        pixel = self.denoised_copy[pixel_coords[1], pixel_coords[0]]
+        return pixel
+    
+    def get_ratioed_denoised_spectrum(self, pixel_coords: tuple[int, int]) -> np.ndarray:
+        """Get spectrum of a denoised pixel (1D)
+
+        Parameters
+        ----------
+        pixel_coords : tuple
+            (x, y) coordinates of the pixel.
+
+        Returns
+        -------
+        np.ndarray
+            Spectrum of the pixel.
+        """
+        if type(self.image.ratioed_denoised_image) != np.ndarray:
+            raise ValueError("No ratioed image available.")
+        if not self.ratioed_image_bad_value_check_flag:
+            self.bad_value_check_ratioed_denoised()
+        if (
+            pixel_coords[0] > self.image.ratioed_denoised_image.shape[1]
+            or pixel_coords[1] > self.image.ratioed_denoised_image.shape[0]
+        ):
+            raise ValueError("Pixel coordinates out of range.")
+        pixel = self.image.ratioed_denoised_image[pixel_coords[1], pixel_coords[0]]
+        return pixel
+    
+    def get_denoised_image(self, band_num: int) -> np.ndarray:
+        """Get 2D slice of denoised hyperspectral datacube.
+
+        Parameters
+        ----------
+        band_num : int
+            Band number to get.
+
+        Returns
+        -------
+        np.ndarray
+            2D slice of the hyperspectral datacube.
+        """
+        if not self.denoised_bad_value_check_flag:
+            self.bad_value_check_denoised()
+        if band_num > self.image.num_bands or band_num < 0:
+            raise ValueError("Band number out of range.")
+        image = self.denoised_copy[:, :, band_num]
+        return image
+
     
 class InteractiveVisualiser(Visualiser):
     """Class to create interactive visualisations of CRISM images."""
