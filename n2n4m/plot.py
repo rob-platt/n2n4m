@@ -351,71 +351,22 @@ class DenoisedVisualiser(Visualiser):
         image = self.denoised_copy[:, :, band_num]
         return image
 
-    
+
 class InteractiveVisualiser(Visualiser):
     """Class to create interactive visualisations of CRISM images."""
     def __init__(self, image: CRISMImage):
         super().__init__(image)
+        self.x_slider, self.y_slider, self.image_band_to_display, self.spectrum_band_range = self.create_base_widgets()
+        self.extra_image_widgets = {}
+        self.extra_spectrum_widgets = {}
+        self.style = {"description_width": "initial"}
+        if self.image.summary_parameters is not None:
+            self.create_summary_parameter_widget()
+        if self.image.ratioed_image is not None:
+            self.create_ratio_widget()
 
-    def interactive_plot(self) -> interactive | VBox | HBox:
-        """Interactive plot of the image and spectrum."""
-
-        def update_plots(x, y, spectrum_range, image_band, **kwargs):
-
-            fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-            # Image Plot
-            if "dropdown" in kwargs and kwargs["dropdown"] != "Raw":
-                image = self.get_summary_parameter(kwargs["dropdown"])
-            else:  # Default is must have at least passed a raw image.
-                if (
-                    image_band == ""
-                    or int(image_band) > self.image.num_bands
-                    or int(image_band) < 1
-                ):
-                    band_num = 59
-                else:
-                    band_num = int(image_band) - 1  # -1 as python is 0-indexed
-                image = self.get_image(band_num)
-            self.plot_image(image, ax=ax[0])
-
-            # Add scatter plot of selected pixel to image plot
-            ax[0].scatter(x, y, marker="x", color="red", label="Selected Pixel")
-
-            # Spectrum Plot
-            # Options are ratioed or raw, if ratioed, must have a ratioed image.
-            # If option is not ratioed, then would be same as if ratioed not in kwargs.
-            pixel = self.get_raw_spectrum((x, y))
-            if "ratio" in kwargs and kwargs["ratio"] == "Ratioed":
-                pixel = self.get_ratioed_spectrum((x, y))
-            band_range = format_spectrum_band_range(spectrum_range)
-            bands = self.get_bands(band_range)
-            pixel = pixel[
-                band_range[0] - 1 : band_range[1] + 1
-            ]  # -1 as python is 0-indexed and +1 to be inclusive of stop.
-            self.plot_spectrum(
-                pixel,
-                bands=bands,
-                ax=ax[1],
-                title=f"{self.image.im_name} - Spectrum at ({x}, {y})",
-            )
-
-            plt.tight_layout()
-            return fig, ax
-
-        def enable_image_band_widget(change):
-            """Summary parameters have no bands, so if dropdown is not raw, disable the band widget."""
-            if change.new == "Raw":
-                image_band_to_display.disabled = False
-                image_band_to_display.value = "60"
-            else:
-                image_band_to_display.disabled = True
-                image_band_to_display.value = "N/A"
-
-        def format_spectrum_band_range(input_str: str):
-            start_band, stop_band = input_str.split("-")
-            return int(start_band), int(stop_band)
-
-        style = {"description_width": "initial"}
+    def create_base_widgets(self) -> tuple[widgets.IntSlider, widgets.IntSlider, widgets.Text, widgets.Text]:
+        """Create base widgets for the interactive plot."""
         x_slider = widgets.IntSlider(
             min=0, max=self.image.spatial_dims[1] - 1, value=0, step=1, description="X:"
         )
@@ -426,61 +377,217 @@ class InteractiveVisualiser(Visualiser):
             value="60",
             placeholder="1-438",
             description="Image Band:",
-            style=style,
             continuous_update=False,
         )
         spectrum_band_range = widgets.Text(
             value="1-438",
             placeholder="1-438",
             description="Spectrum Band Range:",
-            style=style,
             continuous_update=False,
         )
-
-        additional_spectrum_widgets = {}
-        if self.image.ratioed_image is not None:
-            ratio_button = widgets.ToggleButtons(
-                options=["Raw", "Ratioed"],
-                button_style="",
-                value="Raw",
-                description="Spectrum Type:",
-                style=style,
-            )
-            additional_spectrum_widgets["ratio"] = ratio_button
-
-        additional_image_widgets = {}
-        if self.image.summary_parameters:
-            dropdown_options = list(self.image.summary_parameters.keys())
-            dropdown_options.append("Raw")
-            summary_parameter_dropdown = widgets.Dropdown(
-                options=dropdown_options,
-                value="Raw",
-                description="Image Options:",
-                style=style,
-            )
-            summary_parameter_dropdown.observe(enable_image_band_widget, names="value")
-            additional_image_widgets["dropdown"] = summary_parameter_dropdown
-
-        interactive_plot = interactive(
-            update_plots,
-            x=x_slider,
-            y=y_slider,
-            spectrum_range=spectrum_band_range,
-            image_band=image_band_to_display,
-            **additional_spectrum_widgets,
-            **additional_image_widgets,
+        return x_slider, y_slider, image_band_to_display, spectrum_band_range
+    
+    def create_summary_parameter_widget(self) -> None:
+        """Create widget to allow dropdown selection of summary parameters for the image plot."""
+        dropdown_options = list(self.image.summary_parameters.keys())
+        dropdown_options.append("Raw")
+        summary_parameter_dropdown = widgets.Dropdown(
+            options=dropdown_options,
+            value="Raw",
+            description="Image Options:",
+            style=self.style,
         )
-        image_controls = VBox(
+        summary_parameter_dropdown.observe(self.enable_image_band_widget, names="value")
+        self.extra_image_widgets["dropdown"] = summary_parameter_dropdown
+
+    def create_ratio_widget(self) -> None:
+        """Create widget to allow selection of raw or ratioed spectrum for the spectrum plot."""
+        ratio_button = widgets.ToggleButtons(
+            options=["Raw", "Ratioed"],
+            button_style="",
+            value="Raw",
+            description="Spectrum Type:",
+            style=self.style,
+        )
+        self.extra_spectrum_widgets["ratio"] = ratio_button
+        
+    def enable_image_band_widget(self, change):
+            """Summary parameters have no bands, so if dropdown is not raw, disable the band widget."""
+            if change.new == "Raw":
+                self.image_band_to_display.disabled = False
+                self.image_band_to_display.value = "60"
+            else:
+                self.image_band_to_display.disabled = True
+                self.image_band_to_display.value = "N/A"
+
+    def format_spectrum_band_range(self, input_str: str):
+            start_band, stop_band = input_str.split("-")
+            return int(start_band), int(stop_band)
+    
+    def box_image_controls(self) -> VBox:
+        """Create a VBox of the image controls."""
+        return VBox(
             [
-                x_slider,
-                y_slider,
-                image_band_to_display,
-                *additional_image_widgets.values(),
+                self.x_slider,
+                self.y_slider,
+                self.image_band_to_display,
+                *self.extra_image_widgets.values(),
             ]
         )
-        spectrum_controls = VBox(
-            [spectrum_band_range, *additional_spectrum_widgets.values()]
+    
+    def box_spectrum_controls(self) -> VBox:
+        """Create a VBox of the spectrum controls."""
+        return VBox(
+            [self.spectrum_band_range,
+             *self.extra_spectrum_widgets.values()]
         )
+    
+    def get_image_update(self, x: int, y: int, image_band: str, **kwargs) -> np.ndarray:
+        """Get the next image to plot."""
+        if "dropdown" in kwargs and kwargs["dropdown"] != "Raw":
+            image = self.get_summary_parameter(kwargs["dropdown"])
+        else: # Default is must have at least passed a raw image.
+            if (
+                image_band == ""
+                or int(image_band) > self.image.num_bands
+                or int(image_band) < 1
+            ):
+                band_num = 59
+            else:
+                band_num = int(image_band) - 1  # -1 as python is 0-indexed
+            image = self.get_image(band_num)
+        return image
+    
+    def get_spectrum_update(self, x: int, y: int, spectrum_range: str, **kwargs) -> tuple[np.ndarray, tuple[float, ...]]:
+        """Get the next spectrum to plot."""
+        pixel = self.get_raw_spectrum((x, y))
+        if "ratio" in kwargs and kwargs["ratio"] == "Ratioed":
+            pixel = self.get_ratioed_spectrum((x, y))
+        band_range = self.format_spectrum_band_range(spectrum_range)
+        bands = self.get_bands(band_range)
+        pixel = pixel[
+            band_range[0] - 1 : band_range[1] + 1
+        ]
+        return pixel, bands
+    
+    def update_plots(self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs) -> plt.Figure:
+        """Update the plots."""
+        fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+        # Image Plot
+        image = self.get_image_update(x, y, image_band, **kwargs)
+        self.plot_image(image, ax=ax[0])
+        ax[0].scatter(x, y, marker="x", color="red", label="Selected Pixel")
+
+        # Spectrum Plot
+        pixel, bands = self.get_spectrum_update(x, y, spectrum_range, **kwargs)
+        self.plot_spectrum(
+            pixel,
+            bands=bands,
+            ax=ax[1],
+            title=f"{self.image.im_name} - Spectrum at ({x}, {y})",
+        )
+        plt.tight_layout()
+        return fig, ax
+    
+    def interactive_plot(self) -> interactive | VBox | HBox:
+        """Interactive plot of the image and spectrum."""
+        interactive_plot = interactive(
+            self.update_plots,
+            x=self.x_slider,
+            y=self.y_slider,
+            spectrum_range=self.spectrum_band_range,
+            image_band=self.image_band_to_display,
+            **self.extra_spectrum_widgets,
+            **self.extra_image_widgets,
+        )
+        image_controls = self.box_image_controls()
+        spectrum_controls = self.box_spectrum_controls()
         all_controls = HBox([image_controls, spectrum_controls])
         output = interactive_plot.children[-1]
         return VBox([all_controls, output])
+    
+
+class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
+    """Class to create interactive visualisations of denoised CRISM images."""
+    def __init__(self, image: CRISMImageCotcat | CRISMImageN2N4M):
+        if type(image) == CRISMImage:
+            raise ValueError("DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser.")
+        if image.denoised_image is None:
+            raise ValueError("No denoised image available. Please denoise the image first or use InteractiveVisualiser.")
+        super().__init__(image)
+        self.x_slider, self.y_slider, self.image_band_to_display, self.spectrum_band_range = self.create_base_widgets()
+        self.extra_image_widgets = {}
+        self.extra_spectrum_widgets = {}
+        self.style = {"description_width": "initial"}
+        self.create_spectrum_plot_options_widgets()
+        # In theory could have the denoised image but not the ratioed denoised image, and dynamically make the ratio toggle available based on which spectra are selected to plot, but for now, just raise an error.
+        if type(image.ratioed_image) == np.ndarray and image.ratioed_denoised_image is None: 
+            raise ValueError("No denoised ratioed image available. If you wish to plot any ratioed spectra, please ratio the denoised image.")
+        else:
+            self.create_ratio_widget()
+        if self.image.summary_parameters is not None:
+            self.create_summary_parameter_widget()
+
+    def create_spectrum_plot_options_widgets(self) -> None:
+        """Create widgets for the spectrum plot options."""
+        self.extra_spectrum_widgets["Original Spectrum"] = widgets.Checkbox(
+            value=True,
+            description="Original Spectrum",
+            style=self.style,
+        )
+        self.extra_spectrum_widgets["Denoised Spectrum"] = widgets.Checkbox(
+            value=False,
+            description="Denoised Spectrum",
+            style=self.style,
+        )
+
+    def get_denoised_spectrum_update(self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs)-> tuple[np.ndarray, tuple[float, ...]]:
+        pixel = self.get_denoised_spectrum((x, y))
+        if "ratio" in kwargs and kwargs["ratio"] == "Ratioed":
+            pixel = self.get_ratioed_denoised_spectrum((x, y))
+        band_range = self.format_spectrum_band_range(spectrum_range)
+        bands = self.get_bands(band_range)
+        pixel = pixel[
+            band_range[0] - 1 : band_range[1] + 1
+        ]
+        return pixel, bands
+    
+    def box_spectrum_controls(self) -> VBox:
+        """Create a VBox of the spectrum controls."""
+        return VBox(
+            [self.spectrum_band_range,
+             *self.extra_spectrum_widgets.values(),
+            ]
+        )
+    
+    def update_plots(self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs) -> plt.Figure:
+        """Update the plots."""
+        fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+        # Image Plot
+        image = self.get_image_update(x, y, image_band, **kwargs)
+        self.plot_image(image, ax=ax[0])
+        ax[0].scatter(x, y, marker="x", color="red", label="Selected Pixel")
+
+        # Spectrum Plot
+        if self.extra_spectrum_widgets["Original Spectrum"].value:
+            pixel, bands = self.get_spectrum_update(x, y, spectrum_range, **kwargs)
+            self.plot_spectrum(
+                pixel,
+                bands=bands,
+                ax=ax[1],
+                title=f"{self.image.im_name} - Spectrum at ({x}, {y})",
+            )
+        if self.extra_spectrum_widgets["Denoised Spectrum"].value:
+            pixel, bands = self.get_denoised_spectrum_update(x, y, spectrum_range, image_band, **kwargs)
+            self.plot_spectrum(
+                pixel,
+                bands=bands,
+                ax=ax[1],
+                title=f"{self.image.im_name} - Denoised Spectrum at ({x}, {y})",
+            )
+        plt.tight_layout()
+        return fig, ax
+
+
+
+
