@@ -9,7 +9,13 @@ from n2n4m.postprocessing import calculate_pixel_blandness
 from crism_ml.preprocessing import remove_spikes_column, ratio
 
 from n2n4m.cotcat_denoise import cotcat_denoise
-from n2n4m.n2n4m_denoise import load_scaler, clip_bands, create_dataloader, combine_bands, instantiate_default_model
+from n2n4m.n2n4m_denoise import (
+    load_scaler,
+    clip_bands,
+    create_dataloader,
+    combine_bands,
+    instantiate_default_model,
+)
 from n2n4m.model import Noise2Noise1D
 from n2n4m.model_functions import predict, check_available_device
 import n2n4m.preprocessing as preprocessing
@@ -17,6 +23,7 @@ from torch import device
 
 
 BAND_MASK = np.isin(ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS)
+
 
 class CRISMImage:
     """
@@ -48,11 +55,12 @@ class CRISMImage:
 
     References
     ----------
-    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
-    A machine learning toolkit for CRISM image analysis. 
-    Icarus. 2022 Apr;376:114849. 
+    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM.
+    A machine learning toolkit for CRISM image analysis.
+    Icarus. 2022 Apr;376:114849.
 
     """
+
     def __init__(self, filepath: str):
 
         self.filepath = filepath
@@ -76,7 +84,7 @@ class CRISMImage:
         except:
             raise ValueError(f"Image at: {filepath} could not be loaded.")
         return image
-    
+
     def _get_im_name(self) -> str:
         "Clip image acquisition type + hexadecimal number from the filepath."
         im_name = self.filepath.split("/")[-1]
@@ -86,7 +94,7 @@ class CRISMImage:
     def ratio_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
-        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness.
         ALL_WAVELENGTHS are ratioed.
 
         Parameters
@@ -94,18 +102,22 @@ class CRISMImage:
         train_data_dir : str, optional
             Directory containing the training data for the GMM.
             Training data must be called "CRISM_bland_unratioed.mat"
-            Default dir "data". 
+            Default dir "data".
         """
         if self.ratioed_image is not None:
             print("Image has already been ratioed.")
             return
         flattened_image = self.image_array.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
-        pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.image_array)
+        pixel_blandness = calculate_pixel_blandness(
+            flattened_image_clipped, self.spatial_dims, train_data_dir
+        )
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
+            self.image_array
+        )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_image = ratio(despiked_image, pixel_blandness)
-        return 
+        return
 
     def calculate_summary_parameter(self, parameter: str) -> None:
         """Calculate summary parameter for the image.
@@ -115,21 +127,25 @@ class CRISMImage:
         ----------
         parameter : str
             Summary parameter to calculate.
-            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.       
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.
         """
         if self.ratioed_image is None:
-            raise ValueError("Image must be ratioed before summary parameters can be calculated.")
+            raise ValueError(
+                "Image must be ratioed before summary parameters can be calculated."
+            )
         if parameter in self.summary_parameters:
             print(f"{parameter} has already been calculated.")
             return
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
             raise ValueError(f"Summary parameter {parameter} is not implemented.")
         flattened_image = self.ratioed_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](
+            flattened_image, ALL_WAVELENGTHS
+        ).reshape(self.spatial_dims)
         return
-    
+
     def write_image(self, filepath: str, data: np.ndarray) -> None:
-        """Write the image to a new file. 
+        """Write the image to a new file.
         Uses the original file .hdr and .lbl files to generate the new files.
 
         Parameters
@@ -138,11 +154,11 @@ class CRISMImage:
             Filepath to write the new image to.
             Must be a .hdr file. The .img and .lbl files will be written with the same name.
         data : np.ndarray
-            Image to write.      
+            Image to write.
         """
         io.write_image(filepath, data, self.SPy)
         return None
-    
+
 
 class CRISMImageCotcat(CRISMImage):
     """
@@ -175,36 +191,38 @@ class CRISMImageCotcat(CRISMImage):
 
     References
     ----------
-    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
-    A machine learning toolkit for CRISM image analysis. 
+    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM.
+    A machine learning toolkit for CRISM image analysis.
     Icarus. 2022 Apr;376:114849.
-    2. Bultel B, Quantin C, Lozac'h L. 
+    2. Bultel B, Quantin C, Lozac'h L.
     Description of CoTCAT (Complement to CRISM Analysis Toolkit).
-    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing. 
-    2015 Jun;8(6):3039-49. 
+    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing.
+    2015 Jun;8(6):3039-49.
 
     """
+
     def __init__(self, filepath: str):
         super().__init__(filepath)
         self.denoised_image = None
         self.ratioed_denoised_image = None
 
     def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
-        """Apply CoTCAT denoising to the image.
-        """
+        """Apply CoTCAT denoising to the image."""
         if self.num_bands != len(wavelengths):
-            raise ValueError(f"Number of bands in image: {self.num_bands} does not match number of wavelengths: {len(wavelengths)}.")
+            raise ValueError(
+                f"Number of bands in image: {self.num_bands} does not match number of wavelengths: {len(wavelengths)}."
+            )
         if self.denoised_image is not None:
             print("Image has already been denoised using CoTCAT.")
             return
-        
+
         self.denoised_image = cotcat_denoise(self.image_array, wavelengths)
         return None
-    
+
     def ratio_denoised_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
-        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness.
         ALL_WAVELENGTHS are ratioed.
 
         Parameters
@@ -212,21 +230,27 @@ class CRISMImageCotcat(CRISMImage):
         train_data_dir : str, optional
             Directory containing the training data for the GMM.
             Training data must be called "CRISM_bland_unratioed.mat"
-            Default dir "data". 
+            Default dir "data".
         """
         if self.ratioed_denoised_image is not None:
             print("Image has already been ratioed.")
             return
         if self.denoised_image is None:
-            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use ratio_image.")
+            raise ValueError(
+                "Image must be denoised before it can be ratioed. If you wish to ratio the original image, use ratio_image."
+            )
         flattened_image = self.denoised_image.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
-        pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.denoised_image)
+        pixel_blandness = calculate_pixel_blandness(
+            flattened_image_clipped, self.spatial_dims, train_data_dir
+        )
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
+            self.denoised_image
+        )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_denoised_image = ratio(despiked_image, pixel_blandness)
-        return 
-    
+        return
+
     def calculate_summary_parameter(self, parameter: str) -> None:
         """Calculate summary parameter for the image.
         Uses the CoTCAT-denoised, ratioed image.
@@ -235,19 +259,23 @@ class CRISMImageCotcat(CRISMImage):
         ----------
         parameter : str
             Summary parameter to calculate.
-            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.       
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.
         """
         if self.ratioed_denoised_image is None:
-            raise ValueError("Image must be ratioed before summary parameters can be calculated.")
+            raise ValueError(
+                "Image must be ratioed before summary parameters can be calculated."
+            )
         if parameter in self.summary_parameters:
             print(f"{parameter} has already been calculated.")
             return
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
             raise ValueError(f"Summary parameter {parameter} is not implemented.")
         flattened_image = self.ratioed_denoised_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](
+            flattened_image, ALL_WAVELENGTHS
+        ).reshape(self.spatial_dims)
         return
-    
+
 
 class CRISMImageN2N4M(CRISMImage):
     """
@@ -288,11 +316,12 @@ class CRISMImageN2N4M(CRISMImage):
 
     References
     ----------
-    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
-    A machine learning toolkit for CRISM image analysis. 
-    Icarus. 2022 Apr;376:114849. 
+    1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM.
+    A machine learning toolkit for CRISM image analysis.
+    Icarus. 2022 Apr;376:114849.
     3. Unpublished work by Platt R, Arcucci R, John C.
     """
+
     def __init__(self, filepath: str):
         """Initialise the CRISMImageN2N4M object."""
         super().__init__(filepath)
@@ -301,7 +330,7 @@ class CRISMImageN2N4M(CRISMImage):
         self.denoised_image = None
         self.ratioed_denoised_image = None
 
-    def load_n2n4m_scaler(self, filepath:str | None = None) -> None:
+    def load_n2n4m_scaler(self, filepath: str | None = None) -> None:
         """Load a scaler object for the Noise2Noise1D model.
         Scaler object is used to transform the image before denoising.
         Scaler needs to be fitted, and for best results, the same as the one used to train the model.
@@ -312,14 +341,14 @@ class CRISMImageN2N4M(CRISMImage):
         filepath : str | None, optional
             Filepath to the scaler object.
             If None, the default scaler is loaded.
-            Default None. 
+            Default None.
         """
         if filepath:
             self.n2n4m_scaler = load_scaler(filepath)
-        else: 
+        else:
             self.n2n4m_scaler = load_scaler()
         return None
-    
+
     def load_n2n4m_model(self, model: Noise2Noise1D | None = None) -> None:
         """Load a trained Noise2Noise1D model.
         Model is used to denoise the image.
@@ -336,7 +365,6 @@ class CRISMImageN2N4M(CRISMImage):
         self.n2n4m_model = model
         return None
 
-    
     def n2n4m_denoise(self, batch_size: int = 1000) -> None:
         """Apply Noise2Noise1D denoising to the image.
         Will use GPU acceleration if available.
@@ -345,17 +373,23 @@ class CRISMImageN2N4M(CRISMImage):
         Parameters
         ----------
         batch_size : int, optional
-            Batch size for denoising. 
+            Batch size for denoising.
             Default 1000.
         """
         if self.n2n4m_scaler == None:
             raise ValueError("A scaler object must be loaded before denoising.")
         if self.n2n4m_model == None:
-            raise ValueError("An instantiated Noise2Noise1D model must be loaded before denoising.")
-        
-        spectra = self.image_array.reshape(-1, self.num_bands) # Model functions expect flattened spatial dims
+            raise ValueError(
+                "An instantiated Noise2Noise1D model must be loaded before denoising."
+            )
+
+        spectra = self.image_array.reshape(
+            -1, self.num_bands
+        )  # Model functions expect flattened spatial dims
         bands_to_denoise, additional_bands = clip_bands(spectra)
-        bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(bands_to_denoise) # Impute bad values
+        bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(
+            bands_to_denoise
+        )  # Impute bad values
         bands_to_denoise = self.n2n4m_scaler.transform(bands_to_denoise)
         spectra_dataloader = create_dataloader(bands_to_denoise, batch_size=batch_size)
 
@@ -373,7 +407,7 @@ class CRISMImageN2N4M(CRISMImage):
     def ratio_denoised_image(self, train_data_dir: str = "data") -> None:
         """Ratio the denoised image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
-        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
+        Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness.
         ALL_WAVELENGTHS are ratioed.
 
         Parameters
@@ -381,21 +415,27 @@ class CRISMImageN2N4M(CRISMImage):
         train_data_dir : str, optional
             Directory containing the training data for the GMM.
             Training data must be called "CRISM_bland_unratioed.mat"
-            Default dir "data". 
+            Default dir "data".
         """
         if self.ratioed_denoised_image is not None:
             print("Image has already been ratioed.")
             return
         if self.denoised_image is None:
-            raise ValueError("Image must be denoised before it can be ratioed. If you wish to ratio the original image, use ratio_image().")
+            raise ValueError(
+                "Image must be denoised before it can be ratioed. If you wish to ratio the original image, use ratio_image()."
+            )
         flattened_image = self.denoised_image.reshape(-1, self.num_bands)
         flattened_image_clipped = flattened_image[:, BAND_MASK]
-        pixel_blandness = calculate_pixel_blandness(flattened_image_clipped, self.spatial_dims, train_data_dir)
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(self.denoised_image)
+        pixel_blandness = calculate_pixel_blandness(
+            flattened_image_clipped, self.spatial_dims, train_data_dir
+        )
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
+            self.denoised_image
+        )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_denoised_image = ratio(despiked_image, pixel_blandness)
-        return 
-    
+        return
+
     def calculate_summary_parameter(self, parameter: str) -> None:
         """Calculate summary parameter for the image.
         Uses the N2N4M-denoised, ratioed image.
@@ -405,20 +445,19 @@ class CRISMImageN2N4M(CRISMImage):
         ----------
         parameter : str
             Summary parameter to calculate.
-            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.       
+            Must be in IMPLEMENTED_SUMMARY_PARAMETERS.
         """
         if self.ratioed_denoised_image is None:
-            raise ValueError("Image must be ratioed before summary parameters can be calculated.")
+            raise ValueError(
+                "Image must be ratioed before summary parameters can be calculated."
+            )
         if parameter in self.summary_parameters:
             print(f"{parameter} has already been calculated.")
             return
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
             raise ValueError(f"Summary parameter {parameter} is not implemented.")
         flattened_image = self.ratioed_denoised_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](
+            flattened_image, ALL_WAVELENGTHS
+        ).reshape(self.spatial_dims)
         return
-
-
-
-
-            

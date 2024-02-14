@@ -8,7 +8,7 @@ from ipywidgets import widgets, interactive, HBox, VBox
 
 
 class Visualiser:
-    """ 
+    """
     Class to create visualisations of CRISM images.
 
     Parameters
@@ -61,7 +61,7 @@ class Visualiser:
 
     def __init__(self, image: CRISMImage | CRISMImageCotcat | CRISMImageN2N4M):
         """Initialise the Visualiser object.
-        
+
         Parameters
         ----------
         image : CRISMImage | CRISMImageCotcat | CRISMImageN2N4M
@@ -108,13 +108,13 @@ class Visualiser:
             array_copy = array.copy()
             self.replace_bad_values(array_copy)
         return array_copy
-    
+
     def bad_value_check_raw_image(self) -> None:
         """Check for bad values in the raw image."""
         self.raw_image_bad_value_check_flag = True
         self.raw_image_copy = self.bad_value_check(self.raw_image_copy)
         return None
-    
+
     def bad_value_check_ratioed_image(self) -> None:
         """Check for bad values in the ratioed image."""
         self.ratioed_image_bad_value_check_flag = True
@@ -196,12 +196,12 @@ class Visualiser:
     def get_bands(self, bands: tuple[int, int]) -> tuple[float, ...]:
         """Get which bands to plot for the spectrum.
         Inclusive of start and stop bands
-        
+
         Parameters
         ----------
         bands : tuple
             Minimum and maximum band indices to plot.
-            
+
         Returns
         -------
         tuple
@@ -343,13 +343,13 @@ class Visualiser:
 
         ax.set_axis_off()
         return fig, ax
-    
+
 
 class DenoisedVisualiser(Visualiser):
     """Class to create visualisations of denoised CRISM images.
     Inherits from Visualiser, and adds methods to visualise the denoised image and spectra.
     DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser.
-    
+
     Parameters
     ----------
     image : CRISMImageCotcat | CRISMImageN2N4M
@@ -379,8 +379,9 @@ class DenoisedVisualiser(Visualiser):
     get_ratioed_denoised_spectrum(pixel_coords: tuple[int, int]) -> np.ndarray
         Get spectrum of a denoised pixel (1D).
     get_denoised_image(band_num: int) -> np.ndarray
-        Get 2D slice of denoised hyperspectral datacube. 
+        Get 2D slice of denoised hyperspectral datacube.
     """
+
     def __init__(self, image: CRISMImageCotcat | CRISMImageN2N4M):
         """Initialise the DenoisedVisualiser object.
 
@@ -390,20 +391,18 @@ class DenoisedVisualiser(Visualiser):
             CRISMImageCotcat or CRISMImageN2N4M object to visualise.
         """
         if type(image) == CRISMImage:
-            raise ValueError("DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser.")
+            raise ValueError(
+                "DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser."
+            )
         if image.denoised_image is None:
             raise ValueError("No denoised image available.")
         super().__init__(image)
         self.denoised_bad_value_check_flag = False
-        self.denoised_copy = (
-            self.image.denoised_image
-        )
+        self.denoised_copy = self.image.denoised_image
         if self.image.ratioed_denoised_image is not None:
             self.ratioed_denoised_bad_value_check_flag = False
-            self.ratioed_denoised_copy = (
-                self.image.ratioed_denoised_image
-            )
-        
+            self.ratioed_denoised_copy = self.image.ratioed_denoised_image
+
     def bad_value_check_denoised(self) -> None:
         """Check for bad values in the denoised image."""
         self.denoised_bad_value_check_flag = True
@@ -438,8 +437,10 @@ class DenoisedVisualiser(Visualiser):
             raise ValueError("Pixel coordinates out of range.")
         pixel = self.denoised_copy[pixel_coords[1], pixel_coords[0]]
         return pixel
-    
-    def get_ratioed_denoised_spectrum(self, pixel_coords: tuple[int, int]) -> np.ndarray:
+
+    def get_ratioed_denoised_spectrum(
+        self, pixel_coords: tuple[int, int]
+    ) -> np.ndarray:
         """Get spectrum of a pixel (1D) from ratioed denoised image.
 
         Parameters
@@ -463,7 +464,7 @@ class DenoisedVisualiser(Visualiser):
             raise ValueError("Pixel coordinates out of range.")
         pixel = self.image.ratioed_denoised_image[pixel_coords[1], pixel_coords[0]]
         return pixel
-    
+
     def get_denoised_image(self, band_num: int) -> np.ndarray:
         """Get 2D slice of denoised hyperspectral datacube.
 
@@ -515,10 +516,16 @@ class InteractiveVisualiser(Visualiser):
     style : dict
         Dictionary of style settings for the widgets.
     """
+
     def __init__(self, image: CRISMImage):
         """Initialise the InteractiveVisualiser object."""
         super().__init__(image)
-        self.x_slider, self.y_slider, self.image_band_to_display, self.spectrum_band_range = self.create_base_widgets()
+        (
+            self.x_slider,
+            self.y_slider,
+            self.image_band_to_display,
+            self.spectrum_band_range,
+        ) = self.create_base_widgets()
         self.extra_image_widgets = {}
         self.extra_spectrum_widgets = {}
         self.style = {"description_width": "initial"}
@@ -527,7 +534,9 @@ class InteractiveVisualiser(Visualiser):
         if self.image.ratioed_image is not None:
             self.create_ratio_widget()
 
-    def create_base_widgets(self) -> tuple[widgets.IntSlider, widgets.IntSlider, widgets.Text, widgets.Text]:
+    def create_base_widgets(
+        self,
+    ) -> tuple[widgets.IntSlider, widgets.IntSlider, widgets.Text, widgets.Text]:
         """Create base widgets for the interactive plot.
         Returns
         -------
@@ -560,20 +569,22 @@ class InteractiveVisualiser(Visualiser):
             continuous_update=False,
         )
         return x_slider, y_slider, image_band_to_display, spectrum_band_range
-    
+
     def create_summary_parameter_widget(self) -> None:
         """Create widget to allow dropdown selection of summary parameters for the image plot.
         Summary parameters have no bands, so if dropdown is not raw, disable the band widget.
         """
         dropdown_options = list(self.image.summary_parameters.keys())
-        dropdown_options.append("Raw") # Always have the option to plot the raw image.
+        dropdown_options.append("Raw")  # Always have the option to plot the raw image.
         summary_parameter_dropdown = widgets.Dropdown(
             options=dropdown_options,
             value="Raw",
             description="Image Options:",
             style=self.style,
         )
-        summary_parameter_dropdown.observe(self.enable_image_band_widget, names="value") # If dropdown is not raw, disable the band widget.
+        summary_parameter_dropdown.observe(
+            self.enable_image_band_widget, names="value"
+        )  # If dropdown is not raw, disable the band widget.
         self.extra_image_widgets["dropdown"] = summary_parameter_dropdown
 
     def create_ratio_widget(self) -> None:
@@ -586,7 +597,7 @@ class InteractiveVisualiser(Visualiser):
             style=self.style,
         )
         self.extra_spectrum_widgets["ratio"] = ratio_button
-        
+
     def enable_image_band_widget(self, change):
         """Summary parameters have no bands, so if dropdown is not raw, disable the band widget."""
         if change.new == "Raw":
@@ -600,7 +611,7 @@ class InteractiveVisualiser(Visualiser):
         """Format the input string for the spectrum band range."""
         start_band, stop_band = input_str.split("-")
         return int(start_band), int(stop_band)
-    
+
     def box_image_controls(self) -> VBox:
         """Create a VBox of the image controls."""
         return VBox(
@@ -611,17 +622,14 @@ class InteractiveVisualiser(Visualiser):
                 *self.extra_image_widgets.values(),
             ]
         )
-    
+
     def box_spectrum_controls(self) -> VBox:
         """Create a VBox of the spectrum controls."""
-        return VBox(
-            [self.spectrum_band_range,
-             *self.extra_spectrum_widgets.values()]
-        )
-    
+        return VBox([self.spectrum_band_range, *self.extra_spectrum_widgets.values()])
+
     def get_image_update(self, x: int, y: int, image_band: str, **kwargs) -> np.ndarray:
         """Get the next image to plot.
-        
+
         Parameters
         ----------
         x : int
@@ -640,7 +648,7 @@ class InteractiveVisualiser(Visualiser):
         """
         if "dropdown" in kwargs and kwargs["dropdown"] != "Raw":
             image = self.get_summary_parameter(kwargs["dropdown"])
-        else: # Default is must have at least passed a raw image.
+        else:  # Default is must have at least passed a raw image.
             if (
                 image_band == ""
                 or int(image_band) > self.image.num_bands
@@ -651,10 +659,12 @@ class InteractiveVisualiser(Visualiser):
                 band_num = int(image_band) - 1  # -1 as python is 0-indexed
             image = self.get_image(band_num)
         return image
-    
-    def get_spectrum_update(self, x: int, y: int, spectrum_range: str, **kwargs) -> tuple[np.ndarray, tuple[float, ...]]:
+
+    def get_spectrum_update(
+        self, x: int, y: int, spectrum_range: str, **kwargs
+    ) -> tuple[np.ndarray, tuple[float, ...]]:
         """Get the next spectrum to plot.
-        
+
         Parameters
         ----------
         x : int
@@ -679,12 +689,12 @@ class InteractiveVisualiser(Visualiser):
             pixel = self.get_ratioed_spectrum((x, y))
         band_range = self.format_spectrum_band_range(spectrum_range)
         bands = self.get_bands(band_range)
-        pixel = pixel[
-            band_range[0] - 1 : band_range[1] + 1
-        ]
+        pixel = pixel[band_range[0] - 1 : band_range[1] + 1]
         return pixel, bands
-    
-    def update_plots(self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs) -> plt.Figure:
+
+    def update_plots(
+        self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs
+    ) -> plt.Figure:
         """Redraw the image and spectrum plots.
 
         Parameters
@@ -721,7 +731,7 @@ class InteractiveVisualiser(Visualiser):
         )
         plt.tight_layout()
         return fig, ax
-    
+
     def interactive_plot(self) -> interactive | VBox | HBox:
         """Create an interactive plot of the image and its spectra.
         Wraps update_plots in an interactive widget, and adds the image and spectrum controls.
@@ -745,7 +755,7 @@ class InteractiveVisualiser(Visualiser):
         all_controls = HBox([image_controls, spectrum_controls])
         output = interactive_plot.children[-1]
         return VBox([all_controls, output])
-    
+
 
 class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
     """Class to create interactive visualisations of denoised CRISM images.
@@ -774,21 +784,36 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
         Redraw the image and spectrum plots.
     Other methods as per DenoisedVisualiser and InteractiveVisualiser.
     """
+
     def __init__(self, image: CRISMImageCotcat | CRISMImageN2N4M):
         """Initialise the DenoisedInteractiveVisualiser object."""
         if type(image) == CRISMImage:
-            raise ValueError("DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser.")
+            raise ValueError(
+                "DenoisedVisualiser only works with CRISMImageCotcat or CRISMImageN2N4M. For basic CRISMImage, use Visualiser."
+            )
         if image.denoised_image is None:
-            raise ValueError("No denoised image available. Please denoise the image first or use InteractiveVisualiser.")
+            raise ValueError(
+                "No denoised image available. Please denoise the image first or use InteractiveVisualiser."
+            )
         super().__init__(image)
-        self.x_slider, self.y_slider, self.image_band_to_display, self.spectrum_band_range = self.create_base_widgets()
+        (
+            self.x_slider,
+            self.y_slider,
+            self.image_band_to_display,
+            self.spectrum_band_range,
+        ) = self.create_base_widgets()
         self.extra_image_widgets = {}
         self.extra_spectrum_widgets = {}
         self.style = {"description_width": "initial"}
         self.create_spectrum_plot_options_widgets()
         # In theory could have the denoised image but not the ratioed denoised image, and dynamically make the ratio toggle available based on which spectra are selected to plot, but for now, just raise an error.
-        if type(image.ratioed_image) == np.ndarray and image.ratioed_denoised_image is None: 
-            raise ValueError("No denoised ratioed image available. If you wish to plot any ratioed spectra, please ratio the denoised image.")
+        if (
+            type(image.ratioed_image) == np.ndarray
+            and image.ratioed_denoised_image is None
+        ):
+            raise ValueError(
+                "No denoised ratioed image available. If you wish to plot any ratioed spectra, please ratio the denoised image."
+            )
         else:
             self.create_ratio_widget()
         if self.image.summary_parameters is not None:
@@ -798,7 +823,7 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
         """Create widgets for the spectrum plot options.
         Create checkboxes for the raw and denoised spectra.
         Raw spectrum is checked by default, denoised spectrum is not.
-    """
+        """
         self.extra_spectrum_widgets["Original Spectrum"] = widgets.Checkbox(
             value=True,
             description="Original Spectrum",
@@ -810,7 +835,9 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
             style=self.style,
         )
 
-    def get_denoised_spectrum_update(self, x: int, y: int, spectrum_range: str, **kwargs)-> tuple[np.ndarray, tuple[float, ...]]:
+    def get_denoised_spectrum_update(
+        self, x: int, y: int, spectrum_range: str, **kwargs
+    ) -> tuple[np.ndarray, tuple[float, ...]]:
         """Get the next denoised spectrum to plot.
 
         Parameters
@@ -829,12 +856,12 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
             pixel = self.get_ratioed_denoised_spectrum((x, y))
         band_range = self.format_spectrum_band_range(spectrum_range)
         bands = self.get_bands(band_range)
-        pixel = pixel[
-            band_range[0] - 1 : band_range[1] + 1
-        ]
+        pixel = pixel[band_range[0] - 1 : band_range[1] + 1]
         return pixel, bands
-    
-    def update_plots(self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs) -> plt.Figure:
+
+    def update_plots(
+        self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs
+    ) -> plt.Figure:
         """Redraw the image and spectrum plots.
 
         Parameters
@@ -872,7 +899,9 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
                 title=f"{self.image.im_name} - Spectrum at ({x}, {y})",
             )
         if self.extra_spectrum_widgets["Denoised Spectrum"].value:
-            pixel, bands = self.get_denoised_spectrum_update(x, y, spectrum_range, **kwargs)
+            pixel, bands = self.get_denoised_spectrum_update(
+                x, y, spectrum_range, **kwargs
+            )
             self.plot_spectrum(
                 pixel,
                 bands=bands,
@@ -881,7 +910,3 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
             )
         plt.tight_layout()
         return fig, ax
-
-
-
-
