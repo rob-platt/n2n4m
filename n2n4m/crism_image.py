@@ -147,33 +147,31 @@ class CRISMImage:
 class CRISMImageCotcat(CRISMImage):
     """
     Class for denoising CRISM images with CoTCAT [2].
+    Inherits from CRISMImage, and adds methods for denoising the image with CoTCAT.
+    Adds attributes for the denoised image and the ratioed denoised image.
+    Overwrites calculate_summary_parameters, now are solely calculated from the ratioed denoised image.
 
     Attributes
     ----------
-    filepath : str
-        Filepath of the image.
-    image_array : np.ndarray
-        Array of the image.
-        (n_rows, n_columns, n_wavelengths)
-    spatial_dims : tuple
-        Spatial dimensions of the image.
-        (n_rows, n_columns)
-    im_shape : tuple
-        Shape of the image.
-        (n_rows, n_columns, n_wavelengths)
-    im_name : str
-        Name of the image.
-    num_bands : int
-        Number of channels in the image.
-    summary_parameters : dict
-        Dictionary of summary parameters calculated for the image.
-    cotcat_denoised_image : np.ndarray
+    denoised_image : np.ndarray
         Image after being denoised with CoTCAT.
         (n_rows, n_columns, n_wavelengths)
-    ratioed_image : np.ndarray
+    ratioed_denoised_image : np.ndarray
         CoTCAT denoised image after being ratioed.
         Ratioing acheived using GMM from [1] to identify bland pixels.
         (n_rows, n_columns, n_wavelengths)
+    Other attributes inherited from CRISMImage.
+
+    Methods
+    -------
+    cotcat_denoise(wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None
+        Apply CoTCAT denoising to the image.
+    ratio_cotcat_image(train_data_dir: str = "data") -> None
+        Ratio the image using the Plebani bland pixel model.
+    calculate_summary_parameter(parameter: str) -> None
+        Calculate summary parameter for the image.
+        Uses the CoTCAT-denoised, ratioed image.
+    Other methods inherited from CRISMImage.
 
     References
     ----------
@@ -203,7 +201,7 @@ class CRISMImageCotcat(CRISMImage):
         self.denoised_image = cotcat_denoise(self.image_array, wavelengths)
         return None
     
-    def ratio_cotcat_image(self, train_data_dir: str = "data") -> None:
+    def ratio_denoised_image(self, train_data_dir: str = "data") -> None:
         """Ratio the image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
@@ -216,7 +214,7 @@ class CRISMImageCotcat(CRISMImage):
             Training data must be called "CRISM_bland_unratioed.mat"
             Default dir "data". 
         """
-        if self.cotcat_ratioed_image is not None:
+        if self.ratioed_denoised_image is not None:
             print("Image has already been ratioed.")
             return
         if self.denoised_image is None:
@@ -253,55 +251,69 @@ class CRISMImageCotcat(CRISMImage):
 
 class CRISMImageN2N4M(CRISMImage):
     """
-    Class for denoising CRISM images.
+    Class for denoising CRISM images with Noise2Noise4Mars [3].
+    Inherits from CRISMImage, and adds methods for denoising the image with Noise2Noise4Mars.
+    Adds attributes for the denoised image and the ratioed denoised image.
+    Overwrites calculate_summary_parameters, now are solely calculated from the ratioed denoised image.
 
     Attributes
     ----------
-    filepath : str
-        Filepath of the image.
-    image_array : np.ndarray
-        Array of the image.
-        (n_rows, n_columns, n_wavelengths)
-    spatial_dims : tuple
-        Spatial dimensions of the image.
-        (n_rows, n_columns)
-    im_shape : tuple
-        Shape of the image.
-        (n_rows, n_columns, n_wavelengths)
-    im_name : str
-        Name of the image.
-    num_bands : int
-        Number of channels in the image.
-    summary_parameters : dict
-        Dictionary of summary parameters calculated for the image.
     n2n4m_scaler : object
         Scaler object for the Noise2Noise1D model.
     n2n4m_model : object
         Noise2Noise1D model.
-    n2n4m_denoised_image : np.ndarray
+    denoised_image : np.ndarray
         Image after being denoised with Noise2Noise1D.
         (n_rows, n_columns, n_wavelengths)
-    ratioed_image : np.ndarray
+    ratioed_denoised_image : np.ndarray
         N2N4M denoised image after being ratioed.
         Ratioing acheived using GMM from [1] to identify bland pixels.
         (n_rows, n_columns, n_wavelengths)
+    Other attributes inherited from CRISMImage.
+
+    Methods
+    -------
+    load_n2n4m_scaler(filepath: str | None = None) -> None
+        Load a scaler object for the Noise2Noise1D model.
+    load_n2n4m_model(model: Noise2Noise1D | None = None) -> None
+        Load a Noise2Noise1D model.
+    n2n4m_denoise(batch_size: int = 1000) -> None
+        Apply Noise2Noise1D denoising to the image.
+    ratio_n2n4m_image(train_data_dir: str = "data") -> None
+        Ratio the image using the Plebani bland pixel model.
+    calculate_summary_parameter(parameter: str) -> None
+        Calculate summary parameter for the image.
+        Uses the N2N4M-denoised, ratioed image.
+    Other methods inherited from CRISMImage.
 
     References
     ----------
     1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
     A machine learning toolkit for CRISM image analysis. 
     Icarus. 2022 Apr;376:114849. 
-
+    3. Unpublished work by Platt R, Arcucci R, John C.
     """
     def __init__(self, filepath: str):
+        """Initialise the CRISMImageN2N4M object."""
         super().__init__(filepath)
-    
         self.n2n4m_scaler = None
         self.n2n4m_model = None
         self.denoised_image = None
         self.ratioed_denoised_image = None
 
     def load_n2n4m_scaler(self, filepath:str | None = None) -> None:
+        """Load a scaler object for the Noise2Noise1D model.
+        Scaler object is used to transform the image before denoising.
+        Scaler needs to be fitted, and for best results, the same as the one used to train the model.
+        Must be a .joblib file.
+
+        Parameters
+        ----------
+        filepath : str | None, optional
+            Filepath to the scaler object.
+            If None, the default scaler is loaded.
+            Default None. 
+        """
         if filepath:
             self.n2n4m_scaler = load_scaler(filepath)
         else: 
@@ -309,6 +321,16 @@ class CRISMImageN2N4M(CRISMImage):
         return None
     
     def load_n2n4m_model(self, model: Noise2Noise1D | None = None) -> None:
+        """Load a trained Noise2Noise1D model.
+        Model is used to denoise the image.
+
+        Parameters
+        ----------
+        model : Noise2Noise1D | None, optional
+            Noise2Noise1D model to load.
+            If None, the default model is loaded.
+            Default None.
+        """
         if model == None:
             model = instantiate_default_model()
         self.n2n4m_model = model
@@ -316,6 +338,16 @@ class CRISMImageN2N4M(CRISMImage):
 
     
     def n2n4m_denoise(self, batch_size: int = 1000) -> None:
+        """Apply Noise2Noise1D denoising to the image.
+        Will use GPU acceleration if available.
+        If running into memory issues, reduce batch size.
+
+        Parameters
+        ----------
+        batch_size : int, optional
+            Batch size for denoising. 
+            Default 1000.
+        """
         if self.n2n4m_scaler == None:
             raise ValueError("A scaler object must be loaded before denoising.")
         if self.n2n4m_model == None:
@@ -338,8 +370,8 @@ class CRISMImageN2N4M(CRISMImage):
         self.denoised_image = denoised_spectra.reshape(*self.im_shape)
         return None
 
-    def ratio_n2n4m_image(self, train_data_dir: str = "data") -> None:
-        """Ratio the image using the Plebani bland pixel model.
+    def ratio_denoised_image(self, train_data_dir: str = "data") -> None:
+        """Ratio the denoised image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness. 
         ALL_WAVELENGTHS are ratioed.
@@ -367,6 +399,7 @@ class CRISMImageN2N4M(CRISMImage):
     def calculate_summary_parameter(self, parameter: str) -> None:
         """Calculate summary parameter for the image.
         Uses the N2N4M-denoised, ratioed image.
+        Adds the calculated parameter to the summary_parameters dictionary.
 
         Parameters
         ----------
