@@ -568,6 +568,7 @@ class InteractiveVisualiser(Visualiser):
             placeholder=f"1-{self.image.num_bands}",
             description="Spectrum Band Range:",
             continuous_update=False,
+            style=self.style,
         )
         return x_slider, y_slider, image_band_to_display, spectrum_band_range
 
