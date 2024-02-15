@@ -215,6 +215,7 @@ def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataF
 def impute_bad_values_in_image(image: np.ndarray, threshold: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
     """
     Impute any bad values in an image with the mean of that band for the image.
+    If bad values are still present after imputation, impute with the mean of the dataset.
     Returns a copy of the image with the bad values imputed.
 
     Parameters
@@ -241,6 +242,10 @@ def impute_bad_values_in_image(image: np.ndarray, threshold: float = 1.0) -> tup
     bad_value_mask = bad_value_mask.reshape(image_shape)
     image_copy = np.nan_to_num(image_copy, nan=np.nanmean(image_copy, axis=0))
     image_copy = image_copy.reshape(image_shape)
+    if np.isnan(image_copy).any():
+        image_copy = np.nan_to_num(image_copy, nan=np.nanmean(image_copy))
+    if np.isnan(image_copy).any():
+        raise ValueError("Bad values still present in the image after imputation.")
     return image_copy, bad_value_mask
 
 
