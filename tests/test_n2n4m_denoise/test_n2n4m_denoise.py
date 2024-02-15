@@ -10,7 +10,7 @@ from n2n4m.model import Noise2Noise1D
 
 
 TRAINED_MODEL_FILEPATH = importlib.resources.files("n2n4m") / "data/trained_model_weights.pt"
-FITTED_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/input_standardiser.pkl"
+FITTED_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/n2n4m_feature_scaler.joblib"
 
 def test_band_index_mask():
     bands_to_keep = (
@@ -84,7 +84,7 @@ def test_combine_bands():
 
 
 def test_load_scaler():
-    untrained_scaler_filepath = "tests/test_n2n4m_denoise/untrained_scaler.pkl"
+    untrained_scaler_filepath = "tests/test_n2n4m_denoise/untrained_scaler.joblib"
     scaler = n2n4m_denoise.load_scaler(FITTED_SCALER_FILEPATH)
     assert type(scaler) == type(RobustScaler())
     pytest.raises(
