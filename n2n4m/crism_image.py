@@ -207,7 +207,16 @@ class CRISMImageCotcat(CRISMImage):
         self.ratioed_denoised_image = None
 
     def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
-        """Apply CoTCAT denoising to the image."""
+        """Apply CoTCAT denoising to the image.
+        Currently only supports denoising the entire wavelength range.
+        Bad values (65535) are imputed before denoising.
+        
+        Parameters
+        ----------
+        wavelengths : tuple[float, ...], optional
+            Wavelengths to denoise. Must be the same length as the number of bands in the image.W
+            Default ALL_WAVELENGTHS.
+        """
         if self.num_bands != len(wavelengths):
             raise ValueError(
                 f"Number of bands in image: {self.num_bands} does not match number of wavelengths: {len(wavelengths)}."
@@ -216,7 +225,10 @@ class CRISMImageCotcat(CRISMImage):
             print("Image has already been denoised using CoTCAT.")
             return
 
-        self.denoised_image = cotcat_denoise(self.image_array, wavelengths)
+        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
+            self.image_array.copy()
+        )
+        self.denoised_image = cotcat_denoise(filtered_image, wavelengths)
         return None
 
     def ratio_denoised_image(self, train_data_dir: str = "data") -> None:
@@ -244,7 +256,7 @@ class CRISMImageCotcat(CRISMImage):
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
+        filtered_image, bad_value_mask = preprocessing.impute_bad_values_in_image(
             self.denoised_image
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
@@ -429,7 +441,7 @@ class CRISMImageN2N4M(CRISMImage):
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
+        filtered_image, bad_value_mask = preprocessing.impute_bad_values_in_image(
             self.denoised_image
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
