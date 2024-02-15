@@ -107,7 +107,8 @@ class Visualiser:
             )
             array_copy = array.copy()
             self.replace_bad_values(array_copy)
-        return array_copy
+            return array_copy
+        else: return array
 
     def bad_value_check_raw_image(self) -> None:
         """Check for bad values in the raw image."""
@@ -890,6 +891,7 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
 
         # Spectrum Plot
         # Plot whichever checkbox options are selected on the same axes.
+        legend = []
         if self.extra_spectrum_widgets["Original Spectrum"].value:
             pixel, bands = self.get_spectrum_update(x, y, spectrum_range, **kwargs)
             self.plot_spectrum(
@@ -898,6 +900,7 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
                 ax=ax[1],
                 title=f"{self.image.im_name} - Spectrum at ({x}, {y})",
             )
+            legend.append("Original Spectrum")
         if self.extra_spectrum_widgets["Denoised Spectrum"].value:
             pixel, bands = self.get_denoised_spectrum_update(
                 x, y, spectrum_range, **kwargs
@@ -908,5 +911,7 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
                 ax=ax[1],
                 title=f"{self.image.im_name} - Denoised Spectrum at ({x}, {y})",
             )
+            legend.append("Denoised Spectrum")
+        ax[1].legend(legend)
         plt.tight_layout()
         return fig, ax
