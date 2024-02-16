@@ -521,6 +521,7 @@ class InteractiveVisualiser(Visualiser):
     def __init__(self, image: CRISMImage):
         """Initialise the InteractiveVisualiser object."""
         super().__init__(image)
+        self.style = {"description_width": "initial"}
         (
             self.x_slider,
             self.y_slider,
@@ -529,7 +530,6 @@ class InteractiveVisualiser(Visualiser):
         ) = self.create_base_widgets()
         self.extra_image_widgets = {}
         self.extra_spectrum_widgets = {}
-        self.style = {"description_width": "initial"}
         if self.image.summary_parameters is not None:
             self.create_summary_parameter_widget()
         if self.image.ratioed_image is not None:
@@ -798,6 +798,7 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
                 "No denoised image available. Please denoise the image first or use InteractiveVisualiser."
             )
         super().__init__(image)
+        self.style = {"description_width": "initial"}
         (
             self.x_slider,
             self.y_slider,
@@ -806,7 +807,6 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
         ) = self.create_base_widgets()
         self.extra_image_widgets = {}
         self.extra_spectrum_widgets = {}
-        self.style = {"description_width": "initial"}
         self.create_spectrum_plot_options_widgets()
         # In theory could have the denoised image but not the ratioed denoised image, and dynamically make the ratio toggle available based on which spectra are selected to plot, but for now, just raise an error.
         if (
