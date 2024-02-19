@@ -7,3 +7,6 @@ settings.json
 *.lbl
 *.tab
 *.hdr
+*.sh
+*.err
+*.out
