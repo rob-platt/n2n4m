@@ -26,7 +26,7 @@ PARENT_DIR = dirname(os.getcwd())
 DATA_DIR = join(PARENT_DIR, "data")
 IMAGE_DATA_DIR = join(DATA_DIR, "raw_bland_images")
 CRISM_ML_DIR = join(DATA_DIR, "CRISM_ML")
-TMP_DIR = join(DATA_DIR, "tmp")
+TMP_DIR = join(DATA_DIR, "tmp_bland_pixel_data")
 OUTPUT_DIR = join(DATA_DIR, "extracted_bland_pixel_data")
 
 if not os.path.exists(OUTPUT_DIR):
@@ -101,7 +101,7 @@ for idx, image_name in enumerate(downloaded_images_list):
 
     finish_time = time()
     total_time_taken += (finish_time-start_time)
-    print(f"Finished {image_name} in {finish_time-start_time} seconds, projected completion time: {(((total_time_taken/(idx+1))*(len(downloaded_images_list)-(1+idx)))/60) + 5} minutes")
+    print(f"Finished {image_name} in {finish_time-start_time} seconds, projected completion time: {(((total_time_taken/(idx+1))*(len(downloaded_images_list)-(1+idx)))/60) + 5} minutes", flush=True)
 
 # Now collate all the individual jsons into a single dataset.
 image_json_path_list = os.listdir(TMP_DIR)
@@ -111,7 +111,7 @@ for filepath in image_json_path_list:
 
 full_dataset = pd.concat(image_dataframe_list, ignore_index=True)
 full_dataset.to_json(join(OUTPUT_DIR, "bland_pixel_dataset.json"))
-print(f"Finished collating all the images into a single dataset, saved to {join(OUTPUT_DIR, 'bland_pixel_dataset.json')}")
+print(f"Finished collating all the images into a single dataset, saved to {join(OUTPUT_DIR, 'bland_pixel_dataset.json')}", flush=True)
 
 # Clean up the temporary directory
 for filepath in image_json_path_list:
