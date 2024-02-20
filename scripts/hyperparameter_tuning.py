@@ -25,12 +25,13 @@ if not os.path.exists(CHECKPOINT_DIR):
     os.makedirs(CHECKPOINT_DIR)
 
 # Fixed hyperparameters
-N_EPOCHS=100
-NUM_BLAND_PIXELS=150_000
+N_EPOCHS = 100
+NUM_BLAND_PIXELS = 150_000
+
 
 def train_N2N4M(config: dict):
     """
-    Wrapper function to train the Noise2Noise4Minerals model with the given configuration. 
+    Wrapper function to train the Noise2Noise4Minerals model with the given configuration.
     Allows for parallel training of multiple models to speed hyperparameter tuning.
     Model checkpoints saved to disk are used to restore training if the process is interrupted.
 
@@ -48,14 +49,18 @@ def train_N2N4M(config: dict):
             The number of convolutional layers in each upsampling and downsampling block of the model.
         - "num_blocks" : int
             The number of upsampling and downsampling blocks to use in the model.
-    
-        
+
+
     """
     lr = config["lr"]
-    batch_size = config["batchsize"] 
+    batch_size = config["batchsize"]
 
-    mineral_dataset_path = os.path.join(DATA_DIR, "extracted_mineral_pixel_data", "mineral_pixel_dataset.json")
-    bland_dataset_path = os.path.join(DATA_DIR, "extracted_bland_pixel_data", "bland_pixel_dataset.json")
+    mineral_dataset_path = os.path.join(
+        DATA_DIR, "extracted_mineral_pixel_data", "mineral_pixel_dataset.json"
+    )
+    bland_dataset_path = os.path.join(
+        DATA_DIR, "extracted_bland_pixel_data", "bland_pixel_dataset.json"
+    )
 
     mineral_dataset = preprocessing.load_dataset(mineral_dataset_path)
     bland_dataset = preprocessing.load_dataset(bland_dataset_path)
@@ -64,28 +69,52 @@ def train_N2N4M(config: dict):
     # Sample equally from each image of bland pixels.
     num_bland_images = bland_dataset["Image_Name"].nunique()
     samples_per_image = NUM_BLAND_PIXELS // num_bland_images
-    bland_dataset_sample = bland_dataset.groupby("Image_Name").apply(lambda x: x.sample(min(len(x), samples_per_image), random_state=42)).reset_index(drop=True)
+    bland_dataset_sample = (
+        bland_dataset.groupby("Image_Name")
+        .apply(lambda x: x.sample(min(len(x), samples_per_image), random_state=42))
+        .reset_index(drop=True)
+    )
 
     # Combine the bland and mineral datasets, then apply all preprocessing steps.
-    dataset = pd.concat([mineral_dataset, bland_dataset_sample], ignore_index=True).reset_index(drop=True)
+    dataset = pd.concat(
+        [mineral_dataset, bland_dataset_sample], ignore_index=True
+    ).reset_index(drop=True)
     dataset = preprocessing.expand_dataset(dataset)
     dataset = preprocessing.drop_bad_bands(dataset, bands_to_keep=PLEBANI_WAVELENGTHS)
     dataset = preprocessing.impute_bad_values(dataset, threshold=1)
-    dataset = preprocessing.impute_atmospheric_artefacts(dataset, wavelengths=PLEBANI_WAVELENGTHS) 
-    noise_dataset = preprocessing.generate_noisy_pixels(dataset.iloc[:,3:], random_seed=42)
+    dataset = preprocessing.impute_atmospheric_artefacts(
+        dataset, wavelengths=PLEBANI_WAVELENGTHS
+    )
+    noise_dataset = preprocessing.generate_noisy_pixels(
+        dataset.iloc[:, 3:], random_seed=42
+    )
     input_target_dataset = pd.concat([dataset, noise_dataset], axis=1)
-    train_set, test_set = preprocessing.train_test_split(input_target_dataset, bland_pixels=True)
-    train_set, validation_set = preprocessing.train_validation_split(train_set, bland_pixels=True)
+    train_set, test_set = preprocessing.train_test_split(
+        input_target_dataset, bland_pixels=True
+    )
+    train_set, validation_set = preprocessing.train_validation_split(
+        train_set, bland_pixels=True
+    )
 
-    # Split the training, validation, and testing sets. 
-    X_train, y_train, ancillary_train = preprocessing.split_features_targets_anciliary(train_set)
-    X_test, y_test, ancillary_test = preprocessing.split_features_targets_anciliary(test_set)
-    X_validation, y_validation, ancillary_validation = preprocessing.split_features_targets_anciliary(validation_set)
+    # Split the training, validation, and testing sets.
+    X_train, y_train, ancillary_train = preprocessing.split_features_targets_anciliary(
+        train_set
+    )
+    X_test, y_test, ancillary_test = preprocessing.split_features_targets_anciliary(
+        test_set
+    )
+    X_validation, y_validation, ancillary_validation = (
+        preprocessing.split_features_targets_anciliary(validation_set)
+    )
 
     # Fit a scaler to the training data, and then apply it to the validation and test data.
     X_train, feature_scaler = preprocessing.standardise(X_train, method="RobustScaler")
-    X_test, _ = preprocessing.standardise(X_test, method="RobustScaler", scaler=feature_scaler)
-    X_validation, _ = preprocessing.standardise(X_validation, method="RobustScaler", scaler=feature_scaler)
+    X_test, _ = preprocessing.standardise(
+        X_test, method="RobustScaler", scaler=feature_scaler
+    )
+    X_validation, _ = preprocessing.standardise(
+        X_validation, method="RobustScaler", scaler=feature_scaler
+    )
 
     # Convert the data to torch TensorDatasets
     X_train_tensor = torch.from_numpy(X_train.values).float()
@@ -100,9 +129,16 @@ def train_N2N4M(config: dict):
     validation_dataset = TensorDataset(X_validation_tensor, y_validation_tensor)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True)
+    validation_loader = DataLoader(
+        validation_dataset, batch_size=batch_size, shuffle=True
+    )
 
-    model = Noise2Noise1D(kernel_size=config["kernel_size"], depth=config["depth"], num_input_features=350, num_blocks=config["num_blocks"])
+    model = Noise2Noise1D(
+        kernel_size=config["kernel_size"],
+        depth=config["depth"],
+        num_input_features=350,
+        num_blocks=config["num_blocks"],
+    )
 
     device = check_available_device()
     if device == "cuda":
@@ -115,7 +151,9 @@ def train_N2N4M(config: dict):
     loaded_checkpoint = session.get_checkpoint()
     if loaded_checkpoint:
         with loaded_checkpoint.as_directory() as loaded_checkpoint_dir:
-            model_state = torch.load(os.path.join(loaded_checkpoint_dir, "checkpoint.pt"))
+            model_state = torch.load(
+                os.path.join(loaded_checkpoint_dir, "checkpoint.pt")
+            )
             model.load_state_dict(model_state)
 
     criterion = nn.MSELoss()
@@ -125,29 +163,41 @@ def train_N2N4M(config: dict):
     best_loss = np.inf
     for epoch in range(N_EPOCHS):
         train_loss = train(model, optimizer, criterion, train_loader, device)
-        val_loss = validate(model, criterion, validation_loader, device)       
+        val_loss = validate(model, criterion, validation_loader, device)
         if val_loss < best_loss:
             best_loss = val_loss
-            torch.save(model.state_dict(), os.path.join(CHECKPOINT_DIR, "checkpoint.pt"))
+            torch.save(
+                model.state_dict(), os.path.join(CHECKPOINT_DIR, "checkpoint.pt")
+            )
             checkpoint = Checkpoint.from_directory(CHECKPOINT_DIR)
-        session.report({"val_loss": val_loss, "train_loss": train_loss}, checkpoint=checkpoint)
+        session.report(
+            {"val_loss": val_loss, "train_loss": train_loss}, checkpoint=checkpoint
+        )
 
     return
 
+
 # Hyperparameter search space
 search_space = {
-    "feature_scaler": tune.grid_search(["StandardScaler", "MinMaxScaler", "RobustScaler"]),
+    "feature_scaler": tune.grid_search(
+        ["StandardScaler", "MinMaxScaler", "RobustScaler"]
+    ),
     "lr": tune.loguniform(1e-4, 1e-1),
     "batchsize": tune.choice([32, 64, 128, 256, 512]),
     "kernel_size": tune.choice([3, 5, 7, 9, 11]),
     "depth": tune.choice([1, 2, 3, 4, 5]),
-    "num_blocks": tune.choice([1, 2, 3, 4, 5])
+    "num_blocks": tune.choice([1, 2, 3, 4, 5]),
 }
 
 # Tuning with 0.5 GPU and 5 CPU cores per trial, using Asynchronous HyperBand Scheduler, 10 random samples of the search space.
-tuner = tune.Tuner(tune.with_resources(train_N2N4M, resources={"gpu":0.5, "cpu": 5}), 
-                   tune_config=tune.TuneConfig(scheduler=ASHAScheduler(metric="val_loss", mode="min", grace_period=10), num_samples=10), 
-                   param_space=search_space)
+tuner = tune.Tuner(
+    tune.with_resources(train_N2N4M, resources={"gpu": 0.5, "cpu": 5}),
+    tune_config=tune.TuneConfig(
+        scheduler=ASHAScheduler(metric="val_loss", mode="min", grace_period=10),
+        num_samples=10,
+    ),
+    param_space=search_space,
+)
 
 # Run the tuning
 results = tuner.fit()
