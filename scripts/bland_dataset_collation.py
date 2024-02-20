@@ -7,6 +7,11 @@
 # |  |- .lbl file (e.g. ATU0003561F_01_IF168L_TRR3.lbl)
 
 # The data is saved to the data/extracted_bland_pixel_data dir as a JSON file.
+# Each pixel has the following information:
+# - Coordinates
+# - Pixel_Class from [1]
+# - Image_Name (unique 5 long hexadecimal shortcodes)
+# - Spectrum (the reflectance values for each band)
 
 # References
 # 1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. 
