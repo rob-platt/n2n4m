@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import os
-import n2n4m.io
 from crism_ml.preprocessing import filter_bad_pixels, remove_spikes_column, replace
 from crism_ml.train import train_model_bland, feat_masks, compute_bland_scores
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
@@ -21,45 +20,6 @@ def check_data_exists(filepath: str) -> bool:
         True if the file exists, False otherwise.
     """
     return os.path.exists(os.path.join(filepath, "CRISM_bland_unratioed.mat"))
-
-
-def load_image_from_shortcode(
-    mineral_sample: pd.DataFrame,
-    data_dir: str = "../data/raw_images",
-) -> np.ndarray:
-    """
-    Given a mineral sample from a dataset, load the image array.
-
-    Parameters
-    ----------
-    mineral_sample : pd.DataFrame
-        Data sample, must contain "Image_Name" column.
-    data_dir : str, optional
-        Directory where the raw images are stored. Assumes each image is in a separate folder.
-
-    Returns
-    -------
-    image_array : np.ndarray
-        Image.
-    """
-    image_shortcode = mineral_sample["Image_Name"].values[0]
-    image_folder_list = os.listdir(data_dir)
-    image_folder = [folder for folder in image_folder_list if image_shortcode in folder]
-    if len(image_folder) == 0 or len(image_folder) > 1:
-        raise ValueError(
-            f"Image folder not found or multiple folders found for shortcode {image_shortcode}."
-        )
-    image_folder = os.path.join(data_dir, image_folder[0])
-    image_filename = [
-        filename for filename in os.listdir(image_folder) if "3.img" == filename[-5:]
-    ]  # Requires TRR3 processing
-    if len(image_filename) == 0 or len(image_filename) > 1:
-        raise ValueError(
-            f"Image file not found or multiple files found for shortcode {image_shortcode}."
-        )
-    image_filename = os.path.join(image_folder, image_filename[0])
-    image_array, hdr = n2n4m.io.load_image(image_filename)
-    return image_array
 
 
 def calculate_pixel_blandness(
