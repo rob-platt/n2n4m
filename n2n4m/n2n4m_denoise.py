@@ -147,9 +147,10 @@ def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH) -> Noise2N
     model_state_dict = load_model(
         filepath, map_location=device(check_available_device())
     )
-    new_model_state_dict = {
-        k.replace("module.", ""): v for k, v in model_state_dict.items()
-    }  # Model was trained on multiple GPUs, so need to remove "module." from keys
+    if "module." in list(model_state_dict.keys())[0]:
+        new_model_state_dict = {
+            k.replace("module.", ""): v for k, v in model_state_dict.items()
+        }  # Model was trained on multiple GPUs, so need to remove "module." from keys
     model.load_state_dict(new_model_state_dict)
     model.eval()
     return model
