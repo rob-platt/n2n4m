@@ -1,3 +1,11 @@
+#!/home/rp1818/miniconda3/envs/CRISM_env_3/bin/python3
+# This is a script to train a Noise2Noise model on the CRISM data.
+# Requires the training data to be consolidated as JSON files in the data/extracted_mineral_pixel_data and data/extracted_bland_pixel_data directories.
+# You can use the bland_dataset_collation.py and mineral_dataset_collation.py scripts to generate these files.
+# Tuneable parameters are at the top of the script.
+# Model weights are saved under data/{MODEL_NAME}_weights.pt 
+# Training curves are saved under data/{MODEL_NAME}_training_curve.png
+
 import os
 import pandas as pd
 import numpy as np
@@ -8,16 +16,24 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 
 import n2n4m.preprocessing as preprocessing
-from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
+from n2n4m.wavelengths import PLEBANI_WAVELENGTHS
 from n2n4m.model_functions import check_available_device, train, validate
 from n2n4m.model import Noise2Noise1D
 
-DATA_DIR = "../data/N2N4M_training_data"
+PARENT_DIR = os.path.dirname(os.getcwd())
+DATA_DIR = os.path.join(PARENT_DIR, "data")
 
-BATCH_SIZE = 256
-N_EPOCHS = 100
-LR = 0.001
-PATIENCE = 10
+BATCH_SIZE = 256 # Number of pixels to process at once.
+N_EPOCHS = 100 # Number of times to loop through the training data.
+LR = 0.001 # Learning rate for the model.
+PATIENCE = 10 # Number of epochs to wait before stopping training if the validation loss does not improve.
+
+KERNEL_SIZE = 5 # Size of the kernels used in convolutional layers.
+DEPTH = 3 # Number of convolutional layers per upsample or downsample block.
+NUM_BLOCKS = 4 # Number of upsample and downsample blocks in the model.
+NUM_BLAND_PIXELS = 150_000 # Number of bland pixels added to the dataset.
+
+MODEL_NAME = "N2N4M" # Name of the model to be saved.
 
 
 def set_seed(seed):
@@ -28,7 +44,7 @@ def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    torch.backends.cudnn.benchmark = False  ##uses the inbuilt cudnn auto-tuner to find the fastest convolution algorithms.
+    torch.backends.cudnn.benchmark = False  # uses the inbuilt cudnn auto-tuner to find the fastest convolution algorithms.
     torch.backends.cudnn.enabled   = False
 
     return True
@@ -45,8 +61,8 @@ def run_training(model_name: str, kernel_size: int, depth: int, num_blocks: int,
 
     set_seed(42) # Fix seed for reproduceability.
     # Read the data.
-    mineral_dataset_path = os.path.join(DATA_DIR, "full_mineral_pixel_dataset.json")
-    bland_dataset_path = os.path.join(DATA_DIR, "full_mineral_pixel_dataset.json")
+    mineral_dataset_path = os.path.join(DATA_DIR, "extracted_mineral_pixel_data", "mineral_pixel_dataset.json")
+    bland_dataset_path = os.path.join(DATA_DIR, "extracted_bland_pixel_data", "bland_pixel_dataset.json")
     mineral_dataset = preprocessing.load_dataset(mineral_dataset_path)
     bland_dataset = preprocessing.load_dataset(bland_dataset_path)
 
@@ -117,23 +133,25 @@ def run_training(model_name: str, kernel_size: int, depth: int, num_blocks: int,
         print(f"Running epoch {epoch+1}", flush=True)
         train_loss = train(model, optimizer, criterion, train_loader, device)
         val_loss = validate(model, criterion, validation_loader, device)
-        # Weights are saved if an 
+        # Weights are saved if the validation loss is the best so far.
         if val_loss < best_loss:
             best_loss = val_loss
             torch.save(model.state_dict(), weights_filepath)
             current_patience = PATIENCE
-        
+        # Early stopping
         if val_loss >= np.mean(last_5_losses):
             current_patience -= 1
             if current_patience == 0:
                 print("Early stopping!", flush=True)
                 break
+        # Update loss trackers
         last_5_losses.pop(0)
         last_5_losses.append(val_loss)
 
         training_losses.append(train_loss)
         validation_losses.append(val_loss)
 
+        # Save the training curve
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         ax.plot(training_losses, label="Training loss")
         ax.plot(validation_losses, label="Validation loss")
@@ -146,4 +164,4 @@ def run_training(model_name: str, kernel_size: int, depth: int, num_blocks: int,
     print(f"{model_name} training complete! With kernel size {kernel_size}, depth {depth}, and num_blocks {num_blocks}", flush=True)
     print(f"{model_name} best validation loss: {min(validation_losses)}, with training loss: {training_losses[validation_losses.index(min(validation_losses))]}", flush=True)
     
-run_training("N2N4M", kernel_size=5, depth=3, num_blocks=4, num_bland_pixels=150_000)
+run_training(model_name=MODEL_NAME, kernel_size=KERNEL_SIZE, depth=DEPTH, num_blocks=NUM_BLOCKS, num_bland_pixels=NUM_BLAND_PIXELS)
