@@ -130,7 +130,7 @@ for idx, image_name in enumerate(downloaded_images_list):
 image_json_path_list = os.listdir(TMP_DIR)
 image_dataframe_list = []
 for filepath in image_json_path_list:
-    image_dataframe_list.append(pd.read_json(join(TMP_DIR, filepath)))
+    image_dataframe_list.append(pd.read_json(join(TMP_DIR, filepath), dtype={"Image_Name": "string"}))
 
 full_dataset = pd.concat(image_dataframe_list, ignore_index=True)
 full_dataset.to_json(join(OUTPUT_DIR, "bland_pixel_dataset.json"))

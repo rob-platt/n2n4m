@@ -31,7 +31,7 @@ PARENT_DIR = dirname(os.getcwd())
 DATA_DIR = join(PARENT_DIR, "data")
 IMAGE_DATA_DIR = join(DATA_DIR, "raw_mineral_images")
 CRISM_ML_DIR = join(DATA_DIR, "CRISM_ML")
-TMP_DIR = join(DATA_DIR, "tmp_bland_pixel_data")
+TMP_DIR = join(DATA_DIR, "tmp_mineral_pixel_data")
 OUTPUT_DIR = join(DATA_DIR, "extracted_mineral_pixel_data")
 
 if not os.path.exists(OUTPUT_DIR):
@@ -134,7 +134,7 @@ for idx, image_name in enumerate(downloaded_images_list):
 image_json_path_list = os.listdir(TMP_DIR)
 image_dataframe_list = []
 for filepath in image_json_path_list:
-    image_dataframe_list.append(pd.read_json(join(TMP_DIR, filepath)))
+    image_dataframe_list.append(pd.read_json(join(TMP_DIR, filepath), dtype={"Image_Name": "string"}))
 
 full_dataset = pd.concat(image_dataframe_list, ignore_index=True)
 full_dataset.to_json(join(OUTPUT_DIR, "mineral_pixel_dataset.json"))
