@@ -1,7 +1,7 @@
 Metadata-Version: 2.1
 Name: n2n4m
 Version: 0.0.1
-Summary: Shallow water remote sensing package
+Summary: Noise2Noise for Mars: Package for denoising and visualization of CRISM data L sensor data.
 Author: Robert Platt
 Author-email: rp1818@ic.ac.uk
 Classifier: Development Status :: 1 - Planning
@@ -20,4 +20,4 @@ Requires-Dist: ipykernel
 Requires-Dist: pyarrow
 Requires-Dist: crism_ml@ git+https://github.com/Banus/crism_ml.git@master#egg=crism_ml
 
-Package that integrates remote sensing workflows for shallow water environments and machine learning
+Noise2Noise for Mars: Package for denoising and visualization of CRISM data L sensor data.
