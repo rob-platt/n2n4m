@@ -77,4 +77,21 @@ pytest
 The tests are designed to be run in the root directory of the package.
 All tests except test_io and test_postprocessing should pass. The test_io requires N2N4M/tests/test_io/3561F/ATU0003561F_01_IF168L_TRR3.img to exist. The test_postprocessing requires that file to exist, and the CRISM_ML bland pixel dataset to be in the data/CRISM_ML folder.
 
+#### Licence
+This package is released under the MIT licence.
+
+#### Citation
+If you use this package, please cite the following paper:
+```
+@inproceedings{platt2024noise2noise,
+  title={Noise2Noise Denoising of CRISM Hyperspectral Data},
+  author={Platt, R. and Arcucci, R. and John, C.},
+  booktitle={ICLR ML4RS},
+  year={2024}
+}
+```
+
+#### References
+1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. A machine learning toolkit for CRISM image analysis. Icarus. 2022 Apr;376:114849.
+2. Bultel B, Quantin C, Lozac'h L. Description of CoTCAT (Complement to CRISM Analysis Toolkit). IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing. 2015 Jun;8(6):3039-49.
 
