@@ -21,9 +21,9 @@ from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.preprocessing import load_dataset
 
 
-PARENT_DIR = dirname(os.getcwd())
-DATA_DIR = join(PARENT_DIR, "data")  # Trunk of the data directory
-IMAGE_DATA_DIR = "/home/rp1818/RDS/Plebani_Raw_Images/Raw_Images"  # join(DATA_DIR, "raw_mineral_images")  # Contains the raw CRISM data
+PACKAGE_DIR = dirname(os.getcwd())
+DATA_DIR = join(PACKAGE_DIR, "data")  # Trunk of the data directory
+IMAGE_DATA_DIR = join(DATA_DIR, "raw_mineral_images")  # Contains the raw CRISM data
 COLLATED_DATA_DIR = join(
     DATA_DIR, "extracted_mineral_pixel_data"
 )  # Contains the collated mineral pixel data after running the mineral_dataset_collation.py script
@@ -31,8 +31,11 @@ CRISM_ML_DIR = join(
     DATA_DIR, "CRISM_ML"
 )  # Contains the datasets from the Machine Learning Toolkit for CRISM Analysis
 TMP_DIR = join(
-    DATA_DIR, "bland_pixel_tmp"
+    DATA_DIR, "tmp_bland_pixel_finder_data"
 )  # Temporary directory to save the bland pixel data
+if not os.path.exists(TMP_DIR):
+    os.mkdir(TMP_DIR)
+
 OUTPUT_DIR = COLLATED_DATA_DIR  # Output directory for the bland pixel data
 
 WINDOW_SIZE = 50  # The window size to use for the bland pixel calculation i.e. how many pixels to consider above/below the pixel of interest.
@@ -42,8 +45,10 @@ BAND_MASK = np.isin(
     ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 )  # Mask to filter the bands to the 350 required by the Plebani model
 
+np.seterr(all="ignore") # Ignore floating point by zero errors
+
 # Load the mineral pixel dataset
-mineral_pixel_data = load_dataset(join(COLLATED_DATA_DIR, "mineral_pixel_data.json"))
+mineral_pixel_data = load_dataset(join(COLLATED_DATA_DIR, "mineral_pixel_dataset.json"))
 
 # Loop through all the images in the mineral pixel dataset
 for image_id in mineral_pixel_data["Image_Name"].unique():
@@ -144,7 +149,13 @@ for image_id in mineral_pixel_data["Image_Name"].unique():
 
 # Concatenate all the .jsons into one dataframe
 bland_pixel_data = pd.concat(
-    [pd.read_json(join(TMP_DIR, f)) for f in os.listdir(TMP_DIR) if f.endswith(".json")]
+    [pd.read_json(join(TMP_DIR, f)) for f in os.listdir(TMP_DIR) if f.endswith(".json")],
+    ignore_index=True,
 )
 # Save the dataframe
 bland_pixel_data.to_json(join(OUTPUT_DIR, "bland_pixels_to_match_mineral_pixels.json"))
+
+# Clean up the temp dir
+for f in os.listdir(TMP_DIR):
+    os.remove(join(TMP_DIR, f))
+os.rmdir(TMP_DIR)
