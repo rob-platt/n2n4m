@@ -101,6 +101,9 @@ for idx, image_name in enumerate(downloaded_images_list):
     # Loop through coords of bland pixels in that image, slice the image array to get the spectra for that pixel, and add all the information to the lists.
     for coords in relevant_pixel_coords:
         x, y = coords
+        # Some of the pixel coordinates are [0,0] which is invalid - a) Matlab is 1 indexed, b) often there are multiple pixels attributed to the same [0,0] which isn't possible.
+        if x == 0 or y == 0 or x > image_shape[1] or y > image_shape[0]:
+            continue
         spectra_list.append(
             image_array[y - 1, x - 1]
         )  # image_array is (n_rows, n_cols, n_bands) so flipped x and y. -1 offset to account for python indexing starting at 0 but coordinates starting at (1, 1).

@@ -1,3 +1,4 @@
+#!/home/rp1818/miniconda3/envs/CRISM_env_3/bin/python3
 # This is a script to collate all of the mineral pixels detailed in the Machine Learning Toolkit for CRISM Analysis from the original images https://github.com/Banus/crism_ml/tree/master.
 # This requires the CRISM_labeled_pixels_ratioed.mat file from https://cs.iupui.edu/~mdundar/CRISM.htm. This must be in the data/CRISM_ML dir.
 # This also requires the images to be formatted in the following file structure:
@@ -29,7 +30,7 @@ from n2n4m.io import load_image
 
 PARENT_DIR = dirname(os.getcwd())
 DATA_DIR = join(PARENT_DIR, "data")
-IMAGE_DATA_DIR = join(DATA_DIR, "raw_mineral_images")
+IMAGE_DATA_DIR = "/home/rp1818/RDS/Plebani_Raw_Images/Raw_Images" # join(DATA_DIR, "raw_mineral_images")
 CRISM_ML_DIR = join(DATA_DIR, "CRISM_ML")
 TMP_DIR = join(DATA_DIR, "tmp_mineral_pixel_data")
 OUTPUT_DIR = join(DATA_DIR, "extracted_mineral_pixel_data")
@@ -101,16 +102,20 @@ for idx, image_name in enumerate(downloaded_images_list):
     relevant_pixel_mask = np.isin(image_name_for_pixel_list, image_name[-5:])
     # Get the pixel coordinates of all the bland pixels in this image
     relevant_pixel_coords = mineral_pixel_mat["pixcrds"][relevant_pixel_mask]
+    relevant_pixel_labels = mineral_pixel_mat["pixlabs"][relevant_pixel_mask]
 
     # Loop through coords of bland pixels in that image, slice the image array to get the spectra for that pixel, and add all the information to the lists.
-    for coords in relevant_pixel_coords:
+    for coords, label in zip(relevant_pixel_coords, relevant_pixel_labels):
         x, y = coords
+        # Some of the pixel coordinates are [0,0] which is invalid - a) Matlab is 1 indexed, b) often there are multiple pixels attributed to the same [0,0] which isn't possible.
+        if x > image_shape[1] or y > image_shape[0] or x==0 or y==0:
+            continue
         spectra_list.append(
             image_array[y - 1, x - 1]
         )  # image_array is (n_rows, n_cols, n_bands) so flipped x and y. -1 offset to account for python indexing starting at 0 but coordinates starting at (1, 1).
         coords_list.append(coords)
         image_name_list.append(image_name[-5:])  # Hexadecimal shortcode only
-        pixel_class_list.append([39])  # Bland pixels are class 39
+        pixel_class_list.append(label) 
 
     # Create a dataframe of that images pixels and save it to a JSON file in a temporary dir
     image_dataframe = pd.DataFrame(
