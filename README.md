@@ -8,9 +8,9 @@ Noise2Noise4Mars (N2N4M), is introduced to remove noise from CRISM images. We de
 images, and its impact on downstream classification performance, outperforming the benchmark method on most metrics. This should allow for detailed analysis
 for critical sites of interest on the Martian surface, including proposed lander sites.
 #### Example image
-![alt text](https://github.com/rob-platt/N2N4M/blob/main/notebooks/n2n4m_results/ATU0003561F_denoising_example_image.png)
+![alt text](https://github.com/rob-platt/N2N4M/blob/main/docs/ATU0003561F_denoising_example_image.png)
 #### Example spectrum
-![alt text](https://github.com/rob-platt/N2N4M/blob/main/notebooks/n2n4m_results/ATU0003561F_denoising_example_spectrum.png)
+![alt text](https://github.com/rob-platt/N2N4M/blob/main/docs/ATU0003561F_denoising_example_spectrum.png)
 
 #### Introduction
 
@@ -19,10 +19,11 @@ The code offers the following functionality:
 * Apply the N2N4M model to denoise CRISM data
 * Plot static and interactive visualisations of CRISM images and spectra
 * Calculate summary parameters
-* Ratio images using the HBM of [Plebani et al. (2022)](https://github.com/Banus/crism_ml)
+* Ratio images using the HBM of [Plebani et al. (2022)](https://github.com/Banus/crism_ml) [1]
 * Read and write CRISM data in .img format, so that denoised images can then be map-projected
 * Preprocess data and train the N2N4M model
 * Evaluate the performance of the N2N4M model
+* The Complement to CRISM Analysis Toolkit (CoTCAT) [2] denoising method has also been implemented for comparison
 
 #### Usage
 The package is designed for use in Jupyter Notebooks. It requires python 3.8 or later, and should run on Windows and Linux.
@@ -43,5 +44,37 @@ To then install the package, please remove the line ' "torch >= 2.0", ' from the
 ```bash
 pip install -e .
 ```
+The bland pixel dataset from [Plebani et al. (2022)](http://cs.iupui.edu/~mdundar/CRISM.htm) is required to ratio images. This can be downloaded from the link above, and should be placed in the data folder with the following structure:
+| data/
+| ----/CRISM_ML/
+| -------- CRISM_bland_unratioed.mat
+The following bash script will do this for you:
+```bash
+mkdir data
+cd data
+mkdir CRISM_ML
+cd CRISM_ML
+curl -O http://cs.iupui.edu/~mdundar/CRISM/CRISM_bland_unratioed.mat
+cd ..
+cd ..
+```
+A detailed explanation of how to use the package is given in the notebooks/[tutorials](https://github.com/rob-platt/N2N4M/tree/main/notebooks/tutorials) folder.
+
+##### Retraining and Evaluation
+To retrain an N2N4M model, the following steps are required:
+* Download both the mineral and bland pixel datasets from [Plebani et al. (2022)](http://cs.iupui.edu/~mdundar/CRISM.htm). These should be placed in the /data/CRISM_ML folder.
+* Download the imagery used for the Plebani et al. (2022) datasets from [MarsSI](https://marssi.univ-lyon1.fr/wiki/Home). The _CAT_corr.img files must be used, but must be renamed to match the original .img filenames. These images should be placed in the /data/raw_mineral_images and /data/raw_bland_images folders respectively.
+* Run the bland_dataset_collation.py and mineral_dataset_collation.py scripts in the /scripts folder. This will extract all relevant pixels from the raw images and save them as a single .json file. 
+* Run the train.py script in the /scripts folder. This will train the N2N4M model and save the weights in the /data folder.
+
+All of the above steps are also reqeired to run any notebook in notebooks/n2n4m_results. The notebooks in this folder are designed to evaluate the performance of the N2N4M model.
+
+#### Tests
+The package includes a test suite that can be run using the following command:
+```bash
+pytest
+```
+The tests are designed to be run in the root directory of the package.
+All tests except test_io and test_postprocessing should pass. The test_io requires N2N4M/tests/test_io/3561F/ATU0003561F_01_IF168L_TRR3.img to exist. The test_postprocessing requires that file to exist, and the CRISM_ML bland pixel dataset to be in the data/CRISM_ML folder.
 
 
