@@ -456,7 +456,7 @@ class DenoisedVisualiser(Visualiser):
         """
         if type(self.image.ratioed_denoised_image) != np.ndarray:
             raise ValueError("No ratioed image available.")
-        if not self.ratioed_image_bad_value_check_flag:
+        if not self.ratioed_denoised_bad_value_check_flag:
             self.bad_value_check_ratioed_denoised()
         if (
             pixel_coords[0] > self.image.ratioed_denoised_image.shape[1]
