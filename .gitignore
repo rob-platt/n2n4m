@@ -1,6 +1,5 @@
 __pycache__
 
-/data
 settings.json
 *.mat
 *.img
@@ -10,3 +9,4 @@ settings.json
 *.sh
 *.err
 *.out
+*.json
