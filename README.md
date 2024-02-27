@@ -39,9 +39,6 @@ If you wish to use the exact environment used to develop the package, you can in
 ```bash
 conda env create -f environment.yml
 conda activate n2n4m
-```
-To then install the package, please remove the line ' "torch >= 2.0", ' from the setup.py file, and run the following command:
-```bash
 pip install -e .
 ```
 The bland pixel dataset from [Plebani et al. (2022)](http://cs.iupui.edu/~mdundar/CRISM.htm) is required to ratio images. This can be downloaded from the link above, and should be placed in the data folder with the following structure:

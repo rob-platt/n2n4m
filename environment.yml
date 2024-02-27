@@ -211,7 +211,6 @@ dependencies:
       - attrs==23.1.0
       - click==8.1.7
       - comm==0.2.1
-      - crism-ml==0.0.1
       - frozenlist==1.4.0
       - grpcio==1.57.0
       - h5py==3.9.0
