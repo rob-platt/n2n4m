@@ -1,9 +1,9 @@
-import pandas as pd
 import numpy as np
 import os
+
 from crism_ml.preprocessing import filter_bad_pixels, remove_spikes_column, replace
 from crism_ml.train import train_model_bland, feat_masks, compute_bland_scores
-from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
+
 
 def check_data_exists(filepath: str) -> bool:
     """
@@ -49,12 +49,16 @@ def calculate_pixel_blandness(
         Array of blandness values for each pixel in the image in shape (n_rows, n_cols).
     """
     if check_data_exists(train_set_dir) == False:
-        raise FileNotFoundError(f"Training data not found in {train_set_dir}. Please download the training data from"
-                                f"https://cs.iupui.edu/~mdundar/CRISM.htm and place in the data directory.")
+        raise FileNotFoundError(
+            f"Training data not found in {train_set_dir}. Please download the training data from"
+            f"https://cs.iupui.edu/~mdundar/CRISM.htm and place in the data directory."
+        )
     # Need these checks as Plebani functions will silent fail otherwise.
     if type(spectra) != np.ndarray:
-        raise TypeError(f"spectra must be a dictionary or numpy array, not {type(spectra)}")
-    if spectra.shape[1] != 350: 
+        raise TypeError(
+            f"spectra must be a dictionary or numpy array, not {type(spectra)}"
+        )
+    if spectra.shape[1] != 350:
         raise ValueError(
             f"spectra must have 350 bands, not {spectra.shape[1]}. Use the PLEBANI_WAVELENGTHS constant to filter the bands."
         )

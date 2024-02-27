@@ -108,7 +108,8 @@ class Visualiser:
             array_copy = array.copy()
             self.replace_bad_values(array_copy)
             return array_copy
-        else: return array
+        else:
+            return array
 
     def bad_value_check_raw_image(self) -> None:
         """Check for bad values in the raw image."""
@@ -416,7 +417,10 @@ class DenoisedVisualiser(Visualiser):
         self.ratioed_denoised_copy = self.bad_value_check(self.ratioed_denoised_copy)
         return None
 
-    def get_denoised_spectrum(self, pixel_coords: tuple[int, int]) -> np.ndarray:
+    def get_denoised_spectrum(
+        self,
+        pixel_coords: tuple[int, int],
+    ) -> np.ndarray:
         """Get spectrum of a pixel (1D) from denoised image.
 
         Parameters
@@ -440,7 +444,8 @@ class DenoisedVisualiser(Visualiser):
         return pixel
 
     def get_ratioed_denoised_spectrum(
-        self, pixel_coords: tuple[int, int]
+        self,
+        pixel_coords: tuple[int, int],
     ) -> np.ndarray:
         """Get spectrum of a pixel (1D) from ratioed denoised image.
 
@@ -629,7 +634,13 @@ class InteractiveVisualiser(Visualiser):
         """Create a VBox of the spectrum controls."""
         return VBox([self.spectrum_band_range, *self.extra_spectrum_widgets.values()])
 
-    def get_image_update(self, x: int, y: int, image_band: str, **kwargs) -> np.ndarray:
+    def get_image_update(
+        self,
+        x: int,
+        y: int,
+        image_band: str,
+        **kwargs,
+    ) -> np.ndarray:
         """Get the next image to plot.
 
         Parameters
@@ -663,7 +674,11 @@ class InteractiveVisualiser(Visualiser):
         return image
 
     def get_spectrum_update(
-        self, x: int, y: int, spectrum_range: str, **kwargs
+        self,
+        x: int,
+        y: int,
+        spectrum_range: str,
+        **kwargs,
     ) -> tuple[np.ndarray, tuple[float, ...]]:
         """Get the next spectrum to plot.
 
@@ -695,7 +710,12 @@ class InteractiveVisualiser(Visualiser):
         return pixel, bands
 
     def update_plots(
-        self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs
+        self,
+        x: int,
+        y: int,
+        spectrum_range: str,
+        image_band: str,
+        **kwargs,
     ) -> plt.Figure:
         """Redraw the image and spectrum plots.
 
@@ -838,7 +858,11 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
         )
 
     def get_denoised_spectrum_update(
-        self, x: int, y: int, spectrum_range: str, **kwargs
+        self,
+        x: int,
+        y: int,
+        spectrum_range: str,
+        **kwargs,
     ) -> tuple[np.ndarray, tuple[float, ...]]:
         """Get the next denoised spectrum to plot.
 
@@ -862,7 +886,12 @@ class DenoisedInteractiveVisualiser(DenoisedVisualiser, InteractiveVisualiser):
         return pixel, bands
 
     def update_plots(
-        self, x: int, y: int, spectrum_range: str, image_band: str, **kwargs
+        self,
+        x: int,
+        y: int,
+        spectrum_range: str,
+        image_band: str,
+        **kwargs,
     ) -> plt.Figure:
         """Redraw the image and spectrum plots.
 
