@@ -1,13 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import pandas as pd
 import os
 from torch.utils.data import TensorDataset, DataLoader
-import ray
-from ray import air, tune
+from ray import tune
 from ray.air import session
 from ray.tune.schedulers import ASHAScheduler
 from ray.air.checkpoint import Checkpoint

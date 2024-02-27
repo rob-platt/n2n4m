@@ -16,7 +16,6 @@ import numpy as np
 import os
 from os.path import join, dirname
 
-from n2n4m.io import load_image_from_shortcode
 from n2n4m.postprocessing import calculate_pixel_blandness
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.preprocessing import load_dataset
@@ -71,12 +70,14 @@ for image_id in mineral_pixel_data["Image_Name"].unique():
         )
     image_filename = os.path.join(image_folder, image_filename[0])
 
-    image_array = denoise_image(image_filename, model=None, batch_size=1000) # Use default model to denoise
+    image_array = denoise_image(
+        image_filename, model=None, batch_size=1000
+    )  # Use default model to denoise
 
     image_array = image_array[
         :, :, BAND_MASK
     ]  # Filter the bands to the 350 required by the Plebani model
-   
+
     # Calculate the blandness of each pixel in the image
     pixel_blandness = calculate_pixel_blandness(
         image_array.reshape(-1, len(PLEBANI_WAVELENGTHS)),
