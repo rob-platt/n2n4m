@@ -4,7 +4,9 @@ import numpy as np
 
 
 def _wavelength_weights(
-    short_wavelength: float, center_wavelength: float, long_wavelength: float
+    short_wavelength: float,
+    center_wavelength: float,
+    long_wavelength: float,
 ) -> tuple[float, float]:
     """
     Calculate the wavelength weights for a given wavelength range.
@@ -141,7 +143,8 @@ def _band_depth_calculation(
 
 
 def hyd_femg_clay_index_calculation(
-    spectra: np.ndarray, wavelengths: tuple[float, ...]
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
 ) -> np.ndarray:
     """
     Calculate the summary parameter Hydrated Fe/Mg Clay Index across an image.
@@ -206,7 +209,10 @@ def hyd_femg_clay_index_calculation(
     return femg_clays
 
 
-def d2300_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
+def d2300_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
     """
     Calculate the dropoff at 2300nm across an image.
     Highlights Mg,Fe-OH minerals, as well as Mg-Carbonates, and CO2 ice [1].
@@ -259,7 +265,10 @@ def d2300_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np
     return d2300
 
 
-def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
+def bd1750_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
     """
     Calculate the summary parameter BD1750 across an image.
     BD1750 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
@@ -297,7 +306,10 @@ def bd1750_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> n
     return bd1750
 
 
-def bd175_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np.ndarray:
+def bd175_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
     """Calculate hte BD175 summary parameter across an image.
     BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
     Negative values are clipped to 0.
@@ -334,4 +346,9 @@ def bd175_calculation(spectra: np.ndarray, wavelengths: tuple[float, ...]) -> np
     return bd175
 
 
-IMPLEMENTED_SUMMARY_PARAMETERS = {"hyd_femg_clay_index": hyd_femg_clay_index_calculation, "d2300": d2300_calculation, "bd1750": bd1750_calculation, "bd175": bd175_calculation}
+IMPLEMENTED_SUMMARY_PARAMETERS = {
+    "hyd_femg_clay_index": hyd_femg_clay_index_calculation,
+    "d2300": d2300_calculation,
+    "bd1750": bd1750_calculation,
+    "bd175": bd175_calculation,
+}

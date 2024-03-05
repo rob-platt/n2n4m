@@ -1,5 +1,6 @@
 import torch
 
+
 def check_available_device() -> str:
     """Return the device available to torch.
 

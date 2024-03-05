@@ -65,7 +65,10 @@ def expand_dataset(
     return dataset
 
 
-def drop_bad_bands(dataset: pd.DataFrame, bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS):
+def drop_bad_bands(
+    dataset: pd.DataFrame,
+    bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS,
+):
     """
     Drop any bands with consistently bad pixels.
     Default drops 1.00135, 1.0079, > 3.9167, and between 2.66816 and 2.80697 inclusive
@@ -90,7 +93,11 @@ def drop_bad_bands(dataset: pd.DataFrame, bands_to_keep: tuple[float, ...] = PLE
 
     return dataset
 
-def bad_values_to_nan(dataset: pd.DataFrame, threshold: float = 1.0) -> tuple[pd.DataFrame, pd.DataFrame]:
+
+def bad_values_to_nan(
+    dataset: pd.DataFrame,
+    threshold: float = 1.0,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Convert any bad values in the dataset to NaN.
 
@@ -114,7 +121,11 @@ def bad_values_to_nan(dataset: pd.DataFrame, threshold: float = 1.0) -> tuple[pd
     data[data > threshold] = np.nan
     return data, label_data
 
-def detect_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> bool:
+
+def detect_bad_values(
+    dataset: pd.DataFrame,
+    threshold: float = 1.0,
+) -> bool:
     """
     Detect whether any bad values are present in the numerical data of passed dataset.
 
@@ -138,7 +149,10 @@ def detect_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> bool:
         return False
 
 
-def impute_column_mean(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataFrame:
+def impute_column_mean(
+    dataset: pd.DataFrame,
+    threshold: float = 1.0,
+) -> pd.DataFrame:
     """
     Impute any bad values in the dataset with the mean of the column.
     Dataset modified in place.
@@ -162,7 +176,10 @@ def impute_column_mean(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.Data
     return dataset
 
 
-def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataFrame:
+def impute_bad_values(
+    dataset: pd.DataFrame,
+    threshold: float = 1.0,
+) -> pd.DataFrame:
     """
     Impute any bad values in the dataset.
     Dataset modified in place.
@@ -212,7 +229,10 @@ def impute_bad_values(dataset: pd.DataFrame, threshold: float = 1.0) -> pd.DataF
     return dataset
 
 
-def impute_bad_values_in_image(image: np.ndarray, threshold: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+def impute_bad_values_in_image(
+    image: np.ndarray,
+    threshold: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Impute any bad values in an image with the mean of that band for the image.
     If bad values are still present after imputation, impute with the mean of the dataset.
@@ -232,11 +252,11 @@ def impute_bad_values_in_image(image: np.ndarray, threshold: float = 1.0) -> tup
     image_copy : np.ndarray
         A copy of the image with the bad values imputed.
     bad_value_mask : np.ndarray
-        A mask of the bad values in the image.    
+        A mask of the bad values in the image.
     """
     image_copy = image.copy()
     image_shape = image_copy.shape
-    image_copy = image_copy.reshape(-1, image_shape[-1]) # flatten spatial dimensions
+    image_copy = image_copy.reshape(-1, image_shape[-1])  # flatten spatial dimensions
     image_copy = np.where(image_copy > threshold, np.nan, image_copy)
     bad_value_mask = np.isnan(image_copy)
     bad_value_mask = bad_value_mask.reshape(image_shape)
@@ -427,7 +447,8 @@ def impute_atmospheric_artefacts(
 
 
 def generate_noisy_pixels(
-    dataset: pd.DataFrame, random_seed: int = False
+    dataset: pd.DataFrame,
+    random_seed: int = False,
 ) -> pd.DataFrame:
     """
     Generate noisy pixels for the dataset.
@@ -465,7 +486,8 @@ def generate_noisy_pixels(
 
 
 def train_test_split(
-    dataset: pd.DataFrame, bland_pixels: bool = False
+    dataset: pd.DataFrame,
+    bland_pixels: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Split the dataset into a training set and testing set.
@@ -510,7 +532,8 @@ def train_test_split(
 
 
 def train_validation_split(
-    dataset: pd.DataFrame, bland_pixels: bool = False
+    dataset: pd.DataFrame,
+    bland_pixels: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Split the train set into a train set and validation set.
@@ -617,7 +640,7 @@ def standardise(
         else:
             raise ValueError("The given method is not supported.")
         scaler.fit(dataset)
-    
+
     scaled_data = scaler.transform(dataset)
     scaled_dataset = pd.DataFrame(
         scaled_data, columns=dataset.columns, index=dataset.index
@@ -674,5 +697,3 @@ def inverse_standardise(
         raise TypeError("The given dataset type is not supported.")
 
     return dataset
-
-

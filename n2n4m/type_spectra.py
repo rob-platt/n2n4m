@@ -274,7 +274,10 @@ def get_type_spectra(
     return read_type_spectra(type_spectra_filepath)
 
 
-def clip_type_spectra(mineral_sample: pd.Series, type_spectra: pd.Series) -> pd.Series:
+def clip_type_spectra(
+    mineral_sample: pd.Series,
+    type_spectra: pd.Series,
+) -> pd.Series:
     """
     Clip the type spectra to the same wavelengths as the mineral sample.
 

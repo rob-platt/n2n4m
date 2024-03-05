@@ -1,13 +1,13 @@
 import os
 import numpy as np
 import spectral
+from torch import device
 
 from n2n4m import io
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.summary_parameters import IMPLEMENTED_SUMMARY_PARAMETERS
 from n2n4m.postprocessing import calculate_pixel_blandness
 from crism_ml.preprocessing import remove_spikes_column, ratio
-
 from n2n4m.cotcat_denoise import cotcat_denoise
 from n2n4m.n2n4m_denoise import (
     load_scaler,
@@ -19,7 +19,6 @@ from n2n4m.n2n4m_denoise import (
 from n2n4m.model import Noise2Noise1D
 from n2n4m.model_functions import predict, check_available_device
 import n2n4m.preprocessing as preprocessing
-from torch import device
 
 
 BAND_MASK = np.isin(ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS)
@@ -210,7 +209,7 @@ class CRISMImageCotcat(CRISMImage):
         """Apply CoTCAT denoising to the image.
         Currently only supports denoising the entire wavelength range.
         Bad values (65535) are imputed before denoising.
-        
+
         Parameters
         ----------
         wavelengths : tuple[float, ...], optional

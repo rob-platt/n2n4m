@@ -1,4 +1,4 @@
-# Module to run N2N denoising across an entire image. Should allow for CLI usage. Input trained model as instance of Noise2Noise1D class, with weights loaded, image, and output numpy array of denoised image, with extra bands inserted back from original image.
+# Module to run N2N denoising across an entire image.Input trained model as instance of Noise2Noise1D class, with weights loaded, image, and output numpy array of denoised image, with extra bands inserted back from original image.
 import numpy as np
 from joblib import load
 from sklearn.utils.validation import check_is_fitted
@@ -7,8 +7,7 @@ from sklearn.base import BaseEstimator
 from torch import load as load_model
 from torch import device, Tensor
 from torch.utils.data import TensorDataset, DataLoader
-import importlib.resources 
-
+import importlib.resources
 
 from n2n4m.model_functions import predict, check_available_device
 from n2n4m.model import Noise2Noise1D
@@ -17,8 +16,12 @@ import n2n4m.preprocessing as preprocessing
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 
 
-DEFAULT_MODEL_FILEPATH = importlib.resources.files("n2n4m") / "data/trained_model_weights.pt"
-DEFAULT_SCALER_FILEPATH = importlib.resources.files("n2n4m") / "data/n2n4m_feature_scaler.joblib"
+DEFAULT_MODEL_FILEPATH = (
+    importlib.resources.files("n2n4m") / "data/trained_model_weights.pt"
+)
+DEFAULT_SCALER_FILEPATH = (
+    importlib.resources.files("n2n4m") / "data/n2n4m_feature_scaler.joblib"
+)
 
 
 def band_index_mask(
@@ -46,7 +49,8 @@ def band_index_mask(
 
 
 def clip_bands(
-    spectra: np.ndarray, bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS
+    spectra: np.ndarray,
+    bands_to_keep: tuple[float, ...] = PLEBANI_WAVELENGTHS,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Clip the bands of the spectra to the bands specified in bands_to_keep. Returns the interior bands and the exterior bands.
 
@@ -156,7 +160,10 @@ def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH) -> Noise2N
     return model
 
 
-def create_dataloader(spectra: np.ndarray, batch_size: int = 1000) -> DataLoader:
+def create_dataloader(
+    spectra: np.ndarray,
+    batch_size: int = 1000,
+) -> DataLoader:
     """Create a DataLoader from the spectra.
 
     Parameters
@@ -203,11 +210,15 @@ def denoise_image(
     """
 
     im_array, im_hdr = load_image(image_filepath)
-    scaler = load_scaler(scaler_filepath) 
+    scaler = load_scaler(scaler_filepath)
     im_shape = im_array.shape
-    spectra = im_array.reshape(-1, im_shape[-1]) # Model functions expect flattened spatial dims
+    spectra = im_array.reshape(
+        -1, im_shape[-1]
+    )  # Model functions expect flattened spatial dims
     bands_to_denoise, additional_bands = clip_bands(spectra)
-    bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(bands_to_denoise) # Impute bad values
+    bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(
+        bands_to_denoise
+    )  # Impute bad values
 
     bands_to_denoise = scaler.transform(bands_to_denoise)
 

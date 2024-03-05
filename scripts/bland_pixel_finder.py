@@ -45,7 +45,7 @@ BAND_MASK = np.isin(
     ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 )  # Mask to filter the bands to the 350 required by the Plebani model
 
-np.seterr(all="ignore") # Ignore floating point by zero errors
+np.seterr(all="ignore")  # Ignore floating point by zero errors
 
 # Load the mineral pixel dataset
 mineral_pixel_data = load_dataset(join(COLLATED_DATA_DIR, "mineral_pixel_dataset.json"))
@@ -149,7 +149,11 @@ for image_id in mineral_pixel_data["Image_Name"].unique():
 
 # Concatenate all the .jsons into one dataframe
 bland_pixel_data = pd.concat(
-    [pd.read_json(join(TMP_DIR, f)) for f in os.listdir(TMP_DIR) if f.endswith(".json")],
+    [
+        pd.read_json(join(TMP_DIR, f))
+        for f in os.listdir(TMP_DIR)
+        if f.endswith(".json")
+    ],
     ignore_index=True,
 )
 # Save the dataframe
