@@ -26,7 +26,7 @@ The code offers the following functionality:
 * The Complement to CRISM Analysis Toolkit (CoTCAT) [2] denoising method has also been implemented for comparison
 
 #### Usage
-The package is designed for use in Jupyter Notebooks. It requires python 3.8 or later, and should run on Windows and Linux.
+The package is designed for use in Jupyter Notebooks. It requires python >=3.8, currently <3.12, and should run on Windows and Linux.
 GPU acceleration is used where available.  
 To create a new environment and install the package, run the following commands in the terminal:
 
@@ -80,11 +80,15 @@ This package is released under the MIT licence.
 #### Citation
 If you use this package, please cite the following paper:
 ```
-@inproceedings{platt2024noise2noise,
-  title={Noise2Noise Denoising of CRISM Hyperspectral Data},
-  author={Platt, R. and Arcucci, R. and John, C.},
-  booktitle={ICLR ML4RS},
-  year={2024}
+
+@inproceedings{platt_noise2noise4mars,
+  title = {{Noise2Noise} {Denoising} of {CRISM} {Hyperspectral} {Data}},
+	address = {Vienna, Austria},
+	language = {en},
+	booktitle = {{ICLR} 2024 {Machine} {Learning} for {Remote} {Sensing} ({ML4RS}) {Workshop}},
+	author = {Platt, Robert and Arcucci, Rossella and John, Cedric M},
+	month = may,
+	year = {2024},
 }
 ```
 
