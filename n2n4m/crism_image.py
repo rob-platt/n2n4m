@@ -374,6 +374,7 @@ class CRISMImageN2N4M(CRISMImage):
         if model == None:
             model = instantiate_default_model()
         self.n2n4m_model = model
+        self.n2n4m_model.to(device(check_available_device()))
         return None
 
     def n2n4m_denoise(self, batch_size: int = 1000) -> None:
@@ -407,10 +408,7 @@ class CRISMImageN2N4M(CRISMImage):
         denoised_spectra = predict(
             self.n2n4m_model, spectra_dataloader, device(check_available_device())
         )
-        if check_available_device() == "cuda":
-            denoised_spectra = denoised_spectra.detach().numpy()
-        else:
-            denoised_spectra = denoised_spectra.numpy()
+        denoised_spectra.cpu().numpy()
         denoised_spectra = combine_bands(denoised_spectra, additional_bands)
         self.denoised_image = denoised_spectra.reshape(*self.im_shape)
         return None

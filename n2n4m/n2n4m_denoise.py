@@ -157,6 +157,7 @@ def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH) -> Noise2N
         }  # Model was trained on multiple GPUs, so need to remove "module." from keys
     model.load_state_dict(new_model_state_dict)
     model.eval()
+    model.to(device(check_available_device()))
     return model
 
 
@@ -230,10 +231,7 @@ def denoise_image(
     denoised_spectra = predict(
         model, spectra_dataloader, device(check_available_device())
     )
-    if check_available_device() == "cuda":
-        denoised_spectra = denoised_spectra.cpu().numpy()
-    else:
-        denoised_spectra = denoised_spectra.numpy()
+    denoised_spectra.cpu().numpy()
     denoised_spectra = combine_bands(denoised_spectra, additional_bands)
     denoised_image = denoised_spectra.reshape(*im_shape)
     return denoised_image
