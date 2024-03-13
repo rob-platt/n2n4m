@@ -26,12 +26,12 @@ The code offers the following functionality:
 * The Complement to CRISM Analysis Toolkit (CoTCAT) [2] denoising method has also been implemented for comparison
 
 #### Usage
-The package is designed for use in Jupyter Notebooks. It requires python 3.8 or later, and should run on Windows and Linux.
+The package is designed for use in Jupyter Notebooks. It requires python 3.10 or later, and should run on Windows and Linux.
 GPU acceleration is used where available.  
 To create a new environment and install the package, run the following commands in the terminal:
 
 ```bash
-conda create -n n2n4m python=3.8
+conda create -n n2n4m python=3.11
 conda activate n2n4m
 pip install -e .
 ```
@@ -51,7 +51,7 @@ mkdir data
 cd data
 mkdir CRISM_ML
 cd CRISM_ML
-curl -O http://cs.iupui.edu/~mdundar/CRISM/CRISM_bland_unratioed.mat
+wget http://cs.iupui.edu/~mdundar/CRISM/CRISM_bland_unratioed.mat
 cd ..
 cd ..
 ```
