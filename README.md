@@ -92,6 +92,13 @@ If you use this package, please cite the following paper:
 }
 ```
 
+## Acknowledgement
+This code is part of Robert Platt's PhD work and you can [visit his GitHub repository](https://github.com/rob-platt) where the primary version of this code resides. The work was carried out under the supervision of [Cédric John](https://github.com/cedricmjohn) and all code from the research group can be found in the [John Lab GitHub repository](https://github.com/johnlab-research).
+
+<a href="https://www.john-lab.org">
+<img src="https://www.john-lab.org/wp-content/uploads/2023/01/footer_small_logo.png" style="width:220px">
+</a>
+
 #### References
 1. Plebani E, Ehlmann BL, Leask EK, Fox VK, Dundar MM. A machine learning toolkit for CRISM image analysis. Icarus. 2022 Apr;376:114849.
 2. Bultel B, Quantin C, Lozac'h L. Description of CoTCAT (Complement to CRISM Analysis Toolkit). IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing. 2015 Jun;8(6):3039-49.
