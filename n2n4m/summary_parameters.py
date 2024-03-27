@@ -1,6 +1,8 @@
 import numpy as np
 
-# If implementing new summary parameters, add them to the IMPLEMENTED_SUMMARY_PARAMETERS dictionary below for them to show in CRISMImage.summary_parameters.
+# If implementing new summary parameters,
+# add them to the IMPLEMENTED_SUMMARY_PARAMETERS dictionary below for them
+# to show in CRISMImage.summary_parameters.
 
 
 def _wavelength_weights(
@@ -142,6 +144,92 @@ def _band_depth_calculation(
     return band_depth
 
 
+def _relative_band_depth_calculation(
+    spectra: np.ndarray,
+    all_wavelengths: tuple[float, ...],
+    bd_wavelengths: tuple[float, float, float],
+    kernel_sizes: tuple[int, int, int],
+) -> np.ndarray:
+    """
+    An alternative method for calculating band depth, which uses the difference
+    between the interpolated center wavelength reflectance and the center
+    wavelength reflectance as the numerator of the band depth calculation,
+    rather than the center wavelength reflectance itself. This is used for
+    some summary parameters e.g. OLINDEX3.
+
+
+    Parameters
+    ----------
+    spectra : np.ndarray
+        Spectra to calculate band depth for.
+        Shape (n_spectra, n_wavelengths)
+    all_wavelengths : tuple
+        Wavelengths corresponding to spectra.
+        Shape (n_wavelengths,)
+    bd_wavelengths : tuple
+        Wavelengths to calculate band depth for.
+        (short_wavelength, center_wavelength, long_wavelength)
+    kernel_sizes : tuple
+        Kernel sizes to use for each wavelength.
+        (short_wavelength, center_wavelength, long_wavelength)
+
+    Returns
+    -------
+    relative_band_depth : np.ndarray
+        Band depth values for each spectra.
+        Shape (n_spectra,)
+    """
+    short_wavelength = bd_wavelengths[0]
+    center_wavelength = bd_wavelengths[1]
+    long_wavelength = bd_wavelengths[2]
+
+    short_ref = np.zeros(spectra.shape[0])
+    center_ref = np.zeros(spectra.shape[0])
+    long_ref = np.zeros(spectra.shape[0])
+
+    half_kernel_sizes = [kernel_size // 2 for kernel_size in kernel_sizes]
+
+    short_ref = np.median(
+        spectra[
+            :,
+            all_wavelengths.index(short_wavelength)
+            - half_kernel_sizes[0] : all_wavelengths.index(short_wavelength)
+            + half_kernel_sizes[0]
+            + 1,
+        ],
+        axis=1,
+    )
+    center_ref = np.median(
+        spectra[
+            :,
+            all_wavelengths.index(center_wavelength)
+            - half_kernel_sizes[1] : all_wavelengths.index(center_wavelength)
+            + half_kernel_sizes[1]
+            + 1,
+        ],
+        axis=1,
+    )
+    long_ref = np.median(
+        spectra[
+            :,
+            all_wavelengths.index(long_wavelength)
+            - half_kernel_sizes[2] : all_wavelengths.index(long_wavelength)
+            + half_kernel_sizes[2]
+            + 1,
+        ],
+        axis=1,
+    )
+
+    interpolated_center_ref = _interpolated_center_wavelength_reflectance(
+        short_ref, bd_wavelengths, long_ref
+    )
+    relative_band_depth = (
+        interpolated_center_ref - center_ref
+    ) / interpolated_center_ref
+
+    return relative_band_depth
+
+
 def hyd_femg_clay_index_calculation(
     spectra: np.ndarray,
     wavelengths: tuple[float, ...],
@@ -167,8 +255,9 @@ def hyd_femg_clay_index_calculation(
 
     References
     ----------
-    1. Loizeau D, Quantin-Nataf C, Carter J, Flahaut J, Thollot P, Lozac'h L, et al.
-    Quantifying widespread aqueous surface weathering on Mars: The plateaus south of Coprates Chasma.
+    1. Loizeau D, Quantin-Nataf C, Carter J, Flahaut J, Thollot P,
+    Lozac'h L, et al. Quantifying widespread aqueous surface weathering
+    on Mars: The plateaus south of Coprates Chasma.
     Icarus. 2018 Mar 1;302:451-69.
 
     """
@@ -234,9 +323,9 @@ def d2300_calculation(
 
     References
     ----------
-    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al.
-    Revised CRISM spectral parameters and summary products based on the currently
-    detected mineral diversity on Mars.
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW,
+    et al. Revised CRISM spectral parameters and summary products based on the
+    currently detected mineral diversity on Mars.
     Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     d2300 = np.zeros(spectra.shape[0])
@@ -271,7 +360,8 @@ def bd1750_calculation(
 ) -> np.ndarray:
     """
     Calculate the summary parameter BD1750 across an image.
-    BD1750 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
+    BD1750 used to identify presence of absorption feature at 1.75um, present
+    in Alunite and Gypsum [1].
     Negative values are clipped to 0.
 
     Parameters
@@ -291,9 +381,9 @@ def bd1750_calculation(
 
     References
     ----------
-    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW, et al.
-    Revised CRISM spectral parameters and summary products based on the currently
-    detected mineral diversity on Mars.
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW,
+    et al. Revised CRISM spectral parameters and summary products based on the
+    currently detected mineral diversity on Mars.
     Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     bd1750 = np.zeros(spectra.shape[0])
@@ -310,8 +400,9 @@ def bd175_calculation(
     spectra: np.ndarray,
     wavelengths: tuple[float, ...],
 ) -> np.ndarray:
-    """Calculate hte BD175 summary parameter across an image.
-    BD175 used to identify presence of absorption feature at 1.75um, present in Alunite and Gypsum [1].
+    """Calculate the BD175 summary parameter across an image.
+    BD175 used to identify presence of absorption feature at 1.75um, present
+    in Alunite and Gypsum [1].
     Negative values are clipped to 0.
 
     Parameters
@@ -331,8 +422,10 @@ def bd175_calculation(
 
     References
     ----------
-    1. Bultel B, Quantin C, Lozac'h L. Description of CoTCAT (Complement to CRISM Analysis Toolkit).
-    IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing.
+    1. Bultel B, Quantin C, Lozac'h L. Description of CoTCAT (Complement to
+    CRISM Analysis Toolkit).
+    IEEE Journal of Selected Topics in Applied Earth Observations and
+    Remote Sensing.
     2015 Jun;8(6):3039-49.
     """
 
@@ -346,9 +439,166 @@ def bd175_calculation(
     return bd175
 
 
+def olindex3_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
+    """Calculate the OLINDEX3 summary parameter across an image.
+    OLINDEX3 used to identify presence of Olivine.
+    Negative values are clipped to 0.
+
+    Parameters
+    ----------
+    spectra : np.ndarray
+        Spectra to calculate OLINDEX3 for.
+        Shape (n_spectra, n_wavelengths)
+    wavelengths : tuple[float, ...]
+        Wavelengths corresponding to spectra.
+        Shape (n_wavelengths,)
+
+    Returns
+    -------
+    olindex3 : np.ndarray
+        OLINDEX3 values for each spectra.
+        Shape (n_spectra,)
+    """
+    rb1080 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.079960, 2.397200), (7, 7, 7)
+    )
+    rb1152 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.152060, 2.397200), (7, 7, 7)
+    )
+    rb1210 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.211090, 2.397200), (7, 7, 7)
+    )
+    rb1250 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.250450, 2.397200), (7, 7, 7)
+    )
+    rb1263 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.263570, 2.397200), (7, 7, 7)
+    )
+    rb1276 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.276700, 2.397200), (7, 7, 7)
+    )
+    rb1330 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.329210, 2.397200), (7, 7, 7)
+    )
+    rb1368 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.368610, 2.397200), (7, 7, 7)
+    )
+    rb1395 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.394890, 2.397200), (7, 7, 7)
+    )
+    rb1427 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.427730, 2.397200), (7, 7, 7)
+    )
+    rb1470 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.750090, 1.467160, 2.397200), (7, 7, 7)
+    )
+
+    olindex3 = rb1080 * 0.03 + rb1152 * 0.03 + rb1210 * 0.03 + rb1250 * 0.03 \
+        + rb1263 * 0.07 + rb1276 * 0.07 + rb1330 * 0.12 + rb1368 * 0.12 \
+        + rb1395 * 0.14 + rb1427 * 0.18 + rb1470 * 0.18
+
+    olindex3[olindex3 < 0] = 0
+    return olindex3
+
+
+def lcpindex2_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
+    """Calculate the LCPINDEX2 summary parameter across an image.
+    LCPINDEX2 used to identify presence of low-calcium pyroxenes.
+    Negative values are clipped to 0.
+
+    Parameters
+    ----------
+    spectra : np.ndarray
+        Spectra to calculate LCPINDEX2 for.
+        Shape (n_spectra, n_wavelengths)
+    wavelengths : tuple[float, ...]
+        Wavelengths corresponding to spectra.
+        Shape (n_wavelengths,)
+
+    Returns
+    -------
+    lcpindex2 : np.ndarray
+        LCPINDEX2 values for each spectra.
+        Shape (n_spectra,)
+    """
+    rb1690 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.559210, 1.690820, 2.450170), (7, 7, 7)
+    )
+    rb1750 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.559210, 1.750090, 2.450170), (7, 7, 7)
+    )
+    rb1810 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.559210, 1.809390, 2.450170), (7, 7, 7)
+    )
+    rb1870 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.559210, 1.868710, 2.450170), (7, 7, 7)
+    )
+
+    lcpindex2 = rb1690 * 0.2 + rb1750 * 0.2 + rb1810 * 0.3 + rb1870 * 0.3
+    lcpindex2[lcpindex2 < 0] = 0
+    return lcpindex2
+
+
+def hcpindex2_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
+    """Calculate the HCPINDEX2 summary parameter across an image.
+    HCPINDEX2 used to identify presence of high-calcium pyroxenes.
+    Negative values are clipped to 0.
+
+    Parameters
+    ----------
+    spectra : np.ndarray
+        Spectra to calculate HCPINDEX2 for.
+        Shape (n_spectra, n_wavelengths)
+    wavelengths : tuple[float, ...]
+        Wavelengths corresponding to spectra.
+        Shape (n_wavelengths,)
+
+    Returns
+    -------
+    hcpindex2 : np.ndarray
+        HCPINDEX2 values for each spectra.
+        Shape (n_spectra,)
+    """
+    rb2120 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.809390, 2.119480, 2.529510), (7, 5, 7)
+    )
+    rb2140 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.809390, 2.139300, 2.529510), (7, 7, 7)
+    )
+    rb2230 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.809390, 2.231820, 2.529510), (7, 7, 7)
+    )
+    rb2250 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.809390, 2.251650, 2.529510), (7, 7, 7)
+    )
+    rb2430 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.809390, 2.430300, 2.529510), (7, 7, 7)
+    )
+    rb2460 = _relative_band_depth_calculation(
+        spectra, wavelengths, (1.809390, 2.456790, 2.529510), (7, 7, 7)
+    )
+
+    hcpindex2 = rb2120 * 0.1 + rb2140 * 0.1 + rb2230 * 0.15 + rb2250 * 0.3 \
+        + rb2430 * 0.2 + rb2460 * 0.15
+    hcpindex2[hcpindex2 < 0] = 0
+    return hcpindex2
+
+
 IMPLEMENTED_SUMMARY_PARAMETERS = {
     "hyd_femg_clay_index": hyd_femg_clay_index_calculation,
     "d2300": d2300_calculation,
     "bd1750": bd1750_calculation,
     "bd175": bd175_calculation,
+    "OLINDEX3": olindex3_calculation,
+    "LCPINDEX2": lcpindex2_calculation,
+    "HCPINDEX2": hcpindex2_calculation,
 }
