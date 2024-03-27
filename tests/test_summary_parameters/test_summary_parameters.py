@@ -1,6 +1,4 @@
-import pytest
 import numpy as np
-
 
 import n2n4m.summary_parameters as summary_parameters
 
@@ -23,7 +21,7 @@ def test_interpolated_center_wavelength_reflectance():
             short_ref, wavelengths, long_ref
         )
     )
-    assert type(interpolated_reflectance) == np.ndarray
+    assert isinstance(interpolated_reflectance, np.ndarray)
     assert interpolated_reflectance == 2
 
 
@@ -35,5 +33,5 @@ def test_band_depth_calculation():
     band_depth = summary_parameters._band_depth_calculation(
         spectrum, all_wavelengths, bd_wavelengths, kernel_sizes
     )
-    assert type(band_depth) == np.ndarray
-    assert band_depth == 0.5
+    assert isinstance(band_depth, np.ndarray)
+    assert band_depth[0] == 0.5  # Only one spectra in the input
