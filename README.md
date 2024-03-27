@@ -80,15 +80,15 @@ This package is released under the MIT licence.
 #### Citation
 If you use this package, please cite the following paper:
 ```
-
-@inproceedings{platt_noise2noise4mars,
-  title = {{Noise2Noise} {Denoising} of {CRISM} {Hyperspectral} {Data}},
-	address = {Vienna, Austria},
-	language = {en},
-	booktitle = {{ICLR} 2024 {Machine} {Learning} for {Remote} {Sensing} ({ML4RS}) {Workshop}},
-	author = {Platt, Robert and Arcucci, Rossella and John, Cedric M},
-	month = may,
+@misc{platt_noise2noise_2024,
+	title = {{Noise2Noise} {Denoising} of {CRISM} {Hyperspectral} {Data}},
+	url = {http://arxiv.org/abs/2403.17757},
+	publisher = {arXiv},
+	author = {Platt, Robert and Arcucci, Rossella and John, Cédric M.},
+	month = mar,
 	year = {2024},
+	note = {arXiv:2403.17757 [cs]},
+	keywords = {Computer Science - Computer Vision and Pattern Recognition, Computer Science - Machine Learning},
 }
 ```
 
