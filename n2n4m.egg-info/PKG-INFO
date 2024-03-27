@@ -8,8 +8,17 @@ Classifier: Development Status :: 1 - Planning
 Classifier: Intended Audience :: Developers
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: Unix
-Requires-Python: >=3.8, <3.12
+Requires-Python: >=3.10, <3.12
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: torch>=2.0
+Requires-Dist: scikit-learn>=1.2
+Requires-Dist: ray>=2
+Requires-Dist: pandas
+Requires-Dist: pytest
+Requires-Dist: ipykernel
+Requires-Dist: pyarrow
+Requires-Dist: ipywidgets
+Requires-Dist: crism_ml@ git+https://github.com/Banus/crism_ml.git@master#egg=crism_ml
 
 Noise2Noise for Mars: Package for denoising and visualization of CRISM data L sensor data.
