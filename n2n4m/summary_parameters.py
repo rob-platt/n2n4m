@@ -29,7 +29,9 @@ def _wavelength_weights(
     b : float
         Weight for long wavelength.
     """
-    b = (center_wavelength - short_wavelength) / (long_wavelength - short_wavelength)
+    b = (center_wavelength - short_wavelength) / (
+        long_wavelength - short_wavelength
+    )
     a = 1 - b
     return a, b
 
@@ -62,7 +64,9 @@ def _interpolated_center_wavelength_reflectance(
         Interpolated centre wavelength reflectance.
         Shape (n_spectra,)
     """
-    a, b = _wavelength_weights(bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2])
+    a, b = _wavelength_weights(
+        bd_wavelengths[0], bd_wavelengths[1], bd_wavelengths[2]
+    )
     return a * short_ref + b * long_ref
 
 
@@ -461,6 +465,13 @@ def olindex3_calculation(
     olindex3 : np.ndarray
         OLINDEX3 values for each spectra.
         Shape (n_spectra,)
+
+    References
+    ----------
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW,
+    et al. Revised CRISM spectral parameters and summary products based on the
+    currently detected mineral diversity on Mars.
+    Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     rb1080 = _relative_band_depth_calculation(
         spectra, wavelengths, (1.750090, 1.079960, 2.397200), (7, 7, 7)
@@ -496,9 +507,19 @@ def olindex3_calculation(
         spectra, wavelengths, (1.750090, 1.467160, 2.397200), (7, 7, 7)
     )
 
-    olindex3 = rb1080 * 0.03 + rb1152 * 0.03 + rb1210 * 0.03 + rb1250 * 0.03 \
-        + rb1263 * 0.07 + rb1276 * 0.07 + rb1330 * 0.12 + rb1368 * 0.12 \
-        + rb1395 * 0.14 + rb1427 * 0.18 + rb1470 * 0.18
+    olindex3 = (
+        rb1080 * 0.03
+        + rb1152 * 0.03
+        + rb1210 * 0.03
+        + rb1250 * 0.03
+        + rb1263 * 0.07
+        + rb1276 * 0.07
+        + rb1330 * 0.12
+        + rb1368 * 0.12
+        + rb1395 * 0.14
+        + rb1427 * 0.18
+        + rb1470 * 0.18
+    )
 
     olindex3[olindex3 < 0] = 0
     return olindex3
@@ -526,6 +547,13 @@ def lcpindex2_calculation(
     lcpindex2 : np.ndarray
         LCPINDEX2 values for each spectra.
         Shape (n_spectra,)
+
+    References
+    ----------
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW,
+    et al. Revised CRISM spectral parameters and summary products based on the
+    currently detected mineral diversity on Mars.
+    Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     rb1690 = _relative_band_depth_calculation(
         spectra, wavelengths, (1.559210, 1.690820, 2.450170), (7, 7, 7)
@@ -567,6 +595,13 @@ def hcpindex2_calculation(
     hcpindex2 : np.ndarray
         HCPINDEX2 values for each spectra.
         Shape (n_spectra,)
+
+    References
+    ----------
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW,
+    et al. Revised CRISM spectral parameters and summary products based on the
+    currently detected mineral diversity on Mars.
+    Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
     """
     rb2120 = _relative_band_depth_calculation(
         spectra, wavelengths, (1.809390, 2.119480, 2.529510), (7, 5, 7)
@@ -587,10 +622,57 @@ def hcpindex2_calculation(
         spectra, wavelengths, (1.809390, 2.456790, 2.529510), (7, 7, 7)
     )
 
-    hcpindex2 = rb2120 * 0.1 + rb2140 * 0.1 + rb2230 * 0.15 + rb2250 * 0.3 \
-        + rb2430 * 0.2 + rb2460 * 0.15
+    hcpindex2 = (
+        rb2120 * 0.1
+        + rb2140 * 0.1
+        + rb2230 * 0.15
+        + rb2250 * 0.3
+        + rb2430 * 0.2
+        + rb2460 * 0.15
+    )
     hcpindex2[hcpindex2 < 0] = 0
     return hcpindex2
+
+
+def cindex2_calculation(
+    spectra: np.ndarray,
+    wavelengths: tuple[float, ...],
+) -> np.ndarray:
+    """Calculate the CINDEX2 summary parameter across an image.
+    CINDEX2 used to identify presence of carbonates.
+    Negative values are clipped to 0.
+
+    Parameters
+    ----------
+    spectra : np.ndarray
+        Spectra to calculate HCPINDEX2 for.
+        Shape (n_spectra, n_wavelengths)
+    wavelengths : tuple[float, ...]
+        Wavelengths corresponding to spectra.
+        Shape (n_wavelengths,)
+
+    Returns
+    -------
+    cindex2 : np.ndarray
+        CINDEX2 values for each spectra.
+        Shape (n_spectra,)
+
+    References
+    ----------
+    1. Viviano-Beck CE, Seelos FP, Murchie SL, Kahn EG, Seelos KD, Taylor HW,
+    et al. Revised CRISM spectral parameters and summary products based on the
+    currently detected mineral diversity on Mars.
+    Journal of Geophysical Research: Planets. 2014;119(6):1403-31.
+    """
+    a, b = _wavelength_weights(3.450310, 3.610040, 3.876730)
+    # 1 / band depth as applying inverse lever rule 
+    # (looking for convexity rather than concavity). See
+    cindex2 = 1 - 1 / (
+        _band_depth_calculation(
+            spectra, wavelengths, (3.450310, 3.610040, 3.876730), (9, 11, 7)
+        )
+    )
+    return cindex2
 
 
 IMPLEMENTED_SUMMARY_PARAMETERS = {
@@ -601,4 +683,5 @@ IMPLEMENTED_SUMMARY_PARAMETERS = {
     "OLINDEX3": olindex3_calculation,
     "LCPINDEX2": lcpindex2_calculation,
     "HCPINDEX2": hcpindex2_calculation,
+    "CINDEX2": cindex2_calculation,
 }
