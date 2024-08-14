@@ -99,7 +99,7 @@ def write_image(
     original_lbl = read_lbl_file(original_lbl_path)
     new_lbl = modify_lbl_str(original_lbl, original_image.filename, filename)
     write_lbl_file(filename.replace(".hdr", ".lbl"), new_lbl)
-    envi.save_image(filename, data, metadata=metadata)
+    envi.save_image(filename, data, metadata=metadata, interleave="bil")
     return None
 
 
