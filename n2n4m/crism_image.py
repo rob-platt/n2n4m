@@ -74,7 +74,9 @@ class CRISMImage:
 
         self.ratioed_image = None
 
-    def _load_image(self, filepath: str) -> tuple[np.ndarray, spectral.SpyFile]:
+    def _load_image(
+        self, filepath: str
+    ) -> tuple[np.ndarray, spectral.SpyFile]:
         "Load the image from the filepath."
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File {filepath} not found.")
@@ -111,8 +113,8 @@ class CRISMImage:
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
-            self.image_array
+        filtered_image, bad_pix_mask = (
+            preprocessing.impute_bad_values_in_image(self.image_array)
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_image = ratio(despiked_image, pixel_blandness)
@@ -136,11 +138,13 @@ class CRISMImage:
             print(f"{parameter} has already been calculated.")
             return
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
-            raise ValueError(f"Summary parameter {parameter} is not implemented.")
+            raise ValueError(
+                f"Summary parameter {parameter} is not implemented."
+            )
         flattened_image = self.ratioed_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](
-            flattened_image, ALL_WAVELENGTHS
-        ).reshape(self.spatial_dims)
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[
+            parameter
+        ](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
         return
 
     def write_image(self, filepath: str, data: np.ndarray) -> None:
@@ -205,7 +209,9 @@ class CRISMImageCotcat(CRISMImage):
         self.denoised_image = None
         self.ratioed_denoised_image = None
 
-    def cotcat_denoise(self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS) -> None:
+    def cotcat_denoise(
+        self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS
+    ) -> None:
         """Apply CoTCAT denoising to the image.
         Currently only supports denoising the entire wavelength range.
         Bad values (65535) are imputed before denoising.
@@ -224,8 +230,8 @@ class CRISMImageCotcat(CRISMImage):
             print("Image has already been denoised using CoTCAT.")
             return
 
-        filtered_image, bad_pix_mask = preprocessing.impute_bad_values_in_image(
-            self.image_array.copy()
+        filtered_image, bad_pix_mask = (
+            preprocessing.impute_bad_values_in_image(self.image_array.copy())
         )
         self.denoised_image = cotcat_denoise(filtered_image, wavelengths)
         return None
@@ -255,8 +261,8 @@ class CRISMImageCotcat(CRISMImage):
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
-        filtered_image, bad_value_mask = preprocessing.impute_bad_values_in_image(
-            self.denoised_image
+        filtered_image, bad_value_mask = (
+            preprocessing.impute_bad_values_in_image(self.denoised_image)
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_denoised_image = ratio(despiked_image, pixel_blandness)
@@ -280,11 +286,15 @@ class CRISMImageCotcat(CRISMImage):
             print(f"{parameter} has already been calculated.")
             return
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
-            raise ValueError(f"Summary parameter {parameter} is not implemented.")
-        flattened_image = self.ratioed_denoised_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](
-            flattened_image, ALL_WAVELENGTHS
-        ).reshape(self.spatial_dims)
+            raise ValueError(
+                f"Summary parameter {parameter} is not implemented."
+            )
+        flattened_image = self.ratioed_denoised_image.reshape(
+            -1, self.num_bands
+        )
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[
+            parameter
+        ](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
         return
 
 
@@ -389,7 +399,9 @@ class CRISMImageN2N4M(CRISMImage):
             Default 1000.
         """
         if self.n2n4m_scaler == None:
-            raise ValueError("A scaler object must be loaded before denoising.")
+            raise ValueError(
+                "A scaler object must be loaded before denoising."
+            )
         if self.n2n4m_model == None:
             raise ValueError(
                 "An instantiated Noise2Noise1D model must be loaded before denoising."
@@ -399,17 +411,25 @@ class CRISMImageN2N4M(CRISMImage):
             -1, self.num_bands
         )  # Model functions expect flattened spatial dims
         bands_to_denoise, additional_bands = clip_bands(spectra)
-        bands_to_denoise, bad_value_mask = preprocessing.impute_bad_values_in_image(
-            bands_to_denoise
+        bands_to_denoise, bad_value_mask = (
+            preprocessing.impute_bad_values_in_image(bands_to_denoise)
         )  # Impute bad values
         bands_to_denoise = self.n2n4m_scaler.transform(bands_to_denoise)
-        spectra_dataloader = create_dataloader(bands_to_denoise, batch_size=batch_size)
+        spectra_dataloader = create_dataloader(
+            bands_to_denoise, batch_size=batch_size
+        )
 
         denoised_spectra = predict(
-            self.n2n4m_model, spectra_dataloader, device(check_available_device())
+            self.n2n4m_model,
+            spectra_dataloader,
+            device(check_available_device()),
         )
         denoised_spectra.cpu().numpy()
         denoised_spectra = combine_bands(denoised_spectra, additional_bands)
+        # Needs to match original for ENVI
+        denoised_spectra = denoised_spectra.astype("float32")
+        # Catch any negative values
+        denoised_spectra[denoised_spectra < 0] = 65535.0
         self.denoised_image = denoised_spectra.reshape(*self.im_shape)
         return None
 
@@ -438,8 +458,8 @@ class CRISMImageN2N4M(CRISMImage):
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
-        filtered_image, bad_value_mask = preprocessing.impute_bad_values_in_image(
-            self.denoised_image
+        filtered_image, bad_value_mask = (
+            preprocessing.impute_bad_values_in_image(self.denoised_image)
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
         self.ratioed_denoised_image = ratio(despiked_image, pixel_blandness)
@@ -464,9 +484,13 @@ class CRISMImageN2N4M(CRISMImage):
             print(f"{parameter} has already been calculated.")
             return
         if parameter not in IMPLEMENTED_SUMMARY_PARAMETERS:
-            raise ValueError(f"Summary parameter {parameter} is not implemented.")
-        flattened_image = self.ratioed_denoised_image.reshape(-1, self.num_bands)
-        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[parameter](
-            flattened_image, ALL_WAVELENGTHS
-        ).reshape(self.spatial_dims)
+            raise ValueError(
+                f"Summary parameter {parameter} is not implemented."
+            )
+        flattened_image = self.ratioed_denoised_image.reshape(
+            -1, self.num_bands
+        )
+        self.summary_parameters[parameter] = IMPLEMENTED_SUMMARY_PARAMETERS[
+            parameter
+        ](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
         return
