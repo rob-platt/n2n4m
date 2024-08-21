@@ -1,5 +1,5 @@
 # This is a script to collate all of the bland pixels detailed in the Machine Learning Toolkit for CRISM Analysis from the original images https://github.com/Banus/crism_ml/tree/master.
-# This requires the CRISM_bland_unratioed.mat file from https://cs.iupui.edu/~mdundar/CRISM.htm. This must be in the data/CRISM_ML dir.
+# This requires the CRISM_bland_unratioed.mat file from https://zenodo.org/records/13338091. This must be in the data/CRISM_ML dir.
 # This also requires the images to be formatted in the following file structure:
 # data/raw_bland_images
 # |- IMAGE_NAME (e.g. ATU00003561F)

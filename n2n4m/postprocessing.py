@@ -51,7 +51,7 @@ def calculate_pixel_blandness(
     if check_data_exists(train_set_dir) == False:
         raise FileNotFoundError(
             f"Training data not found in {train_set_dir}. Please download the training data from"
-            f"https://cs.iupui.edu/~mdundar/CRISM.htm and place in the data directory."
+            f"https://zenodo.org/records/13338091/files/CRISM_bland_unratioed.mat and place in the data directory."
         )
     # Need these checks as Plebani functions will silent fail otherwise.
     if type(spectra) != np.ndarray:
