@@ -41,7 +41,7 @@ conda env create -f environment.yml
 conda activate n2n4m
 pip install -e .
 ```
-The bland pixel dataset from [Plebani et al. (2022)](http://cs.iupui.edu/~mdundar/CRISM.htm) is required to ratio images. This can be downloaded from the link above, and should be placed in the data folder with the following structure:
+The bland pixel dataset from [Plebani et al. (2022)](https://zenodo.org/records/13338091) is required to ratio images. This can be downloaded from the link above, and should be placed in the data folder with the following structure:
 | data/
 | ----/CRISM_ML/
 | -------- CRISM_bland_unratioed.mat
@@ -59,7 +59,7 @@ A detailed explanation of how to use the package is given in the notebooks/[tuto
 
 ##### Retraining and Evaluation
 To retrain an N2N4M model, the following steps are required:
-* Download both the mineral and bland pixel datasets from [Plebani et al. (2022)](http://cs.iupui.edu/~mdundar/CRISM.htm). These should be placed in the /data/CRISM_ML folder.
+* Download both the mineral and bland pixel datasets from [Plebani et al. (2022)](https://zenodo.org/records/13338091). These should be placed in the /data/CRISM_ML folder.
 * Download the imagery used for the Plebani et al. (2022) datasets from [MarsSI](https://marssi.univ-lyon1.fr/wiki/Home). The _CAT_corr.img files must be used, but must be renamed to match the original .img filenames. These images should be placed in the /data/raw_mineral_images and /data/raw_bland_images folders respectively.
 * Run the bland_dataset_collation.py and mineral_dataset_collation.py scripts in the /scripts folder. This will extract all relevant pixels from the raw images and save them as a single .json file. 
 * Run the train.py script in the /scripts folder. This will train the N2N4M model and save the weights in the /data folder.
