@@ -192,7 +192,7 @@ class Visualiser:
             or pixel_coords[1] > self.image.ratioed_image.shape[0]
         ):
             raise ValueError("Pixel coordinates out of range.")
-        pixel = self.image.ratioed_image[pixel_coords[1], pixel_coords[0]]
+        pixel = self.ratioed_image_copy[pixel_coords[1], pixel_coords[0]]
         return pixel
 
     def get_bands(self, bands: tuple[int, int]) -> tuple[float, ...]:

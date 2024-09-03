@@ -117,7 +117,9 @@ class CRISMImage:
             preprocessing.impute_bad_values_in_image(self.image_array)
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
-        self.ratioed_image = ratio(despiked_image, pixel_blandness)
+        ratioed_image = ratio(despiked_image, pixel_blandness)
+        ratioed_image[bad_pix_mask] = 65535.0
+        self.ratioed_image = ratioed_image
         return
 
     def calculate_summary_parameter(self, parameter: str) -> None:
