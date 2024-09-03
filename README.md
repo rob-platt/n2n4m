@@ -51,7 +51,7 @@ mkdir data
 cd data
 mkdir CRISM_ML
 cd CRISM_ML
-wget http://cs.iupui.edu/~mdundar/CRISM/CRISM_bland_unratioed.mat
+wget https://zenodo.org/records/13338091/files/CRISM_bland_unratioed.mat
 cd ..
 cd ..
 ```
