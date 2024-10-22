@@ -434,10 +434,12 @@ def bd175_calculation(
     """
 
     bd175 = np.ones(spectra.shape[0])
+    lambda_c_1_idx = wavelengths.index(1.75009)
+    lambda_c_2_idx = wavelengths.index(1.75668)
+    lambda_l_idx = wavelengths.index(1.77644)
+    lambda_s_idx = wavelengths.index(1.69082)
 
-    bd175 = 1 - _band_depth_calculation(
-        spectra, wavelengths, (1.55264, 1.75009, 1.81598), (1, 1, 1)
-    )
+    bd175 = bd175 - ((spectra[:, lambda_c_1_idx] + spectra[:, lambda_c_2_idx])/(spectra[:, lambda_s_idx] + spectra[:, lambda_l_idx]))
     bd175[bd175 < 0] = 0
 
     return bd175
