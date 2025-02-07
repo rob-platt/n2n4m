@@ -1,5 +1,4 @@
 ## Noise 2 Noise For Mars (N2N4M)
-### Official repository for the ICLR ML4RS 2024 paper "Noise2Noise Denoising of CRISM Hyperspectral Data"
 
 #### Abstract
 Hyperspectral data acquired by the Compact Reconnaissance Imaging Spectrometer for Mars (CRISM) have allowed for unparalleled mapping of the surface
@@ -76,21 +75,6 @@ All tests except test_io and test_postprocessing should pass. The test_io requir
 
 #### Licence
 This package is released under the MIT licence.
-
-#### Citation
-If you use this package, please cite the following paper:
-```
-@misc{platt_noise2noise_2024,
-	title = {{Noise2Noise} {Denoising} of {CRISM} {Hyperspectral} {Data}},
-	url = {http://arxiv.org/abs/2403.17757},
-	publisher = {arXiv},
-	author = {Platt, Robert and Arcucci, Rossella and John, Cédric M.},
-	month = mar,
-	year = {2024},
-	note = {arXiv:2403.17757 [cs]},
-	keywords = {Computer Science - Computer Vision and Pattern Recognition, Computer Science - Machine Learning},
-}
-```
 
 ## Acknowledgement
 This code is part of Robert Platt's PhD work and you can [visit his GitHub repository](https://github.com/rob-platt) where the primary version of this code resides. The work was carried out under the supervision of [Cédric John](https://github.com/cedricmjohn) and all code from the research group can be found in the [John Lab GitHub repository](https://github.com/johnlab-research).
