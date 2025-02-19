@@ -13,7 +13,7 @@ setup(
     description=DESCRIPTION,
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
-    python_requires=">=3.10, <3.12",
+    python_requires=">=3.10, <3.14",
     packages=find_packages(),
     package_data={
         "n2n4m": ["data/*"]
