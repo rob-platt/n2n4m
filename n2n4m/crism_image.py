@@ -149,7 +149,9 @@ class CRISMImage:
         ](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
         return
 
-    def write_image(self, filepath: str, data: np.ndarray) -> None:
+    def write_image(
+        self, filepath: str, data: np.ndarray, reverse_bands: bool = False
+    ) -> None:
         """Write the image to a new file.
         Uses the original file .hdr and .lbl files to generate the new files.
 
@@ -160,8 +162,12 @@ class CRISMImage:
             Must be a .hdr file. The .img and .lbl files will be written with the same name.
         data : np.ndarray
             Image to write.
+        reverse_bands : bool, optional
+            If True, reverse the bands of the image before writing.
+            This is necessary as the CRISM Analysis Toolkit of ENVI reads the bands in reverse order.
+            Default is False.
         """
-        io.write_image(filepath, data, self.SPy)
+        io.write_image(filepath, data, self.SPy, reverse_bands)
         return None
 
 

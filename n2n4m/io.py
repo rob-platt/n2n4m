@@ -78,6 +78,7 @@ def write_image(
     filename: str,
     data: np.ndarray,
     original_image: envi.SpyFile,
+    reverse_bands: bool = False,
 ) -> None:
     """
 
@@ -86,13 +87,21 @@ def write_image(
     filename : str
         The filename and path of the new image to be written.
         Must be a .hdr file. The .img and .lbl files will be written with the same name.
+    data : np.ndarray
+        The data array of the image to be written.
     original_image : envi.SpyFile
         The object of the original image loaded in, used to write the new image.
         MUST be the original image, as need access to the header information to be able to generate the new header and .lbl file for the new image
         in such a way for CRISM Analysis Toolkit of ENVI to read it and map project it correctly.
+    reverse_bands : bool, optional
+        If True, reverse the bands of the image before writing.
+        This is necessary as the CRISM Analysis Toolkit of ENVI reads the bands in reverse order.
+        Default is False.
     """
     if not filename.endswith(".hdr"):
         raise ValueError("Filename must end .hdr")
+    if reverse_bands:
+        data = data[:, :, ::-1]
     metadata = original_image.metadata
     metadata = modify_hdr_metadata(metadata, filename)
     original_lbl_path = original_image.filename.replace(".img", ".lbl")
@@ -124,14 +133,18 @@ def load_image_from_shortcode(
     """
     image_shortcode = mineral_sample["Image_Name"].values[0]
     image_folder_list = os.listdir(data_dir)
-    image_folder = [folder for folder in image_folder_list if image_shortcode in folder]
+    image_folder = [
+        folder for folder in image_folder_list if image_shortcode in folder
+    ]
     if len(image_folder) == 0 or len(image_folder) > 1:
         raise ValueError(
             f"Image folder not found or multiple folders found for shortcode {image_shortcode}."
         )
     image_folder = os.path.join(data_dir, image_folder[0])
     image_filename = [
-        filename for filename in os.listdir(image_folder) if "3.img" == filename[-5:]
+        filename
+        for filename in os.listdir(image_folder)
+        if "3.img" == filename[-5:]
     ]  # Requires TRR3 processing
     if len(image_filename) == 0 or len(image_filename) > 1:
         raise ValueError(
