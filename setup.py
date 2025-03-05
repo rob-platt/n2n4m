@@ -19,17 +19,6 @@ setup(
         "n2n4m": ["data/*"]
     },
     include_package_data=True,
-    install_requires=[
-        "torch >= 2.0",
-        "scikit-learn >= 1.2",
-        "ray >= 2",
-        "pandas",
-        "pytest",
-        "ipykernel",
-        "pyarrow",
-        "ipywidgets",
-        "crism_ml @ git+https://github.com/Banus/crism_ml.git@master#egg=crism_ml",
-    ],
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",

@@ -4,13 +4,13 @@ from joblib import load
 from sklearn.utils.validation import check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.base import BaseEstimator
-from torch import load as load_model
-from torch import device, Tensor
-from torch.utils.data import TensorDataset, DataLoader
+# from torch import load as load_model
+# from torch import device, Tensor
+# from torch.utils.data import TensorDataset, DataLoader
 import importlib.resources
 
-from n2n4m.model_functions import predict, check_available_device
-from n2n4m.model import Noise2Noise1D
+# from n2n4m.model_functions import predict, check_available_device
+# from n2n4m.model import Noise2Noise1D
 from n2n4m.io import load_image
 import n2n4m.preprocessing as preprocessing
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
@@ -134,7 +134,7 @@ def load_scaler(filepath: str = DEFAULT_SCALER_FILEPATH) -> BaseEstimator:
     return scaler
 
 
-def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH) -> Noise2Noise1D:
+def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH): # -> Noise2Noise1D:
     """Load a trained Noise2Noise1D model from a file.
 
     Parameters
@@ -164,7 +164,7 @@ def instantiate_default_model(filepath: str = DEFAULT_MODEL_FILEPATH) -> Noise2N
 def create_dataloader(
     spectra: np.ndarray,
     batch_size: int = 1000,
-) -> DataLoader:
+):# -> DataLoader:
     """Create a DataLoader from the spectra.
 
     Parameters
@@ -189,7 +189,7 @@ def create_dataloader(
 def denoise_image(
     image_filepath: str,
     scaler_filepath: str = DEFAULT_SCALER_FILEPATH,
-    model: Noise2Noise1D | None = None,
+    model=None, #: Noise2Noise1D | None = None,
     batch_size: int = 1000,
 ) -> np.ndarray:
     """Denoise an image using a trained N2N model.

@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from sklearn.metrics import r2_score
 import numpy as np
-import torch
+# import torch
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS

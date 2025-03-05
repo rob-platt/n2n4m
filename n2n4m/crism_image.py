@@ -1,23 +1,22 @@
 import os
 import numpy as np
 import spectral
-from torch import device
-
+# from torch import device
 from n2n4m import io
 from n2n4m.wavelengths import ALL_WAVELENGTHS, PLEBANI_WAVELENGTHS
 from n2n4m.summary_parameters import IMPLEMENTED_SUMMARY_PARAMETERS
 from n2n4m.postprocessing import calculate_pixel_blandness
 from crism_ml.preprocessing import remove_spikes_column, ratio
-from n2n4m.cotcat_denoise import cotcat_denoise
-from n2n4m.n2n4m_denoise import (
-    load_scaler,
-    clip_bands,
-    create_dataloader,
-    combine_bands,
-    instantiate_default_model,
-)
-from n2n4m.model import Noise2Noise1D
-from n2n4m.model_functions import predict, check_available_device
+# from n2n4m.cotcat_denoise import cotcat_denoise
+# from n2n4m.n2n4m_denoise import (
+#     load_scaler,
+#     clip_bands,
+#     create_dataloader,
+#     combine_bands,
+#     instantiate_default_model,
+# )
+# from n2n4m.model import Noise2Noise1D
+# from n2n4m.model_functions import predict, check_available_device
 import n2n4m.preprocessing as preprocessing
 
 
@@ -162,10 +161,6 @@ class CRISMImage:
             Must be a .hdr file. The .img and .lbl files will be written with the same name.
         data : np.ndarray
             Image to write.
-        reverse_bands : bool, optional
-            If True, reverse the bands of the image before writing.
-            This is necessary as the CRISM Analysis Toolkit of ENVI reads the bands in reverse order.
-            Default is False.
         """
         io.write_image(filepath, data, self.SPy, reverse_bands)
         return None
@@ -378,7 +373,7 @@ class CRISMImageN2N4M(CRISMImage):
             self.n2n4m_scaler = load_scaler()
         return None
 
-    def load_n2n4m_model(self, model: Noise2Noise1D | None = None) -> None:
+    def load_n2n4m_model(self, model: None = None) -> None:
         """Load a trained Noise2Noise1D model.
         Model is used to denoise the image.
 
