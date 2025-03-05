@@ -1,9 +1,9 @@
 # Module to run N2N denoising across an entire image.Input trained model as instance of Noise2Noise1D class, with weights loaded, image, and output numpy array of denoised image, with extra bands inserted back from original image.
 import numpy as np
 from joblib import load
-from sklearn.utils.validation import check_is_fitted
-from sklearn.exceptions import NotFittedError
-from sklearn.base import BaseEstimator
+# from sklearn.utils.validation import check_is_fitted
+# from sklearn.exceptions import NotFittedError
+# from sklearn.base import BaseEstimator
 # from torch import load as load_model
 # from torch import device, Tensor
 # from torch.utils.data import TensorDataset, DataLoader
@@ -110,7 +110,7 @@ def combine_bands(
     return spectra
 
 
-def load_scaler(filepath: str = DEFAULT_SCALER_FILEPATH) -> BaseEstimator:
+def load_scaler(filepath: str = DEFAULT_SCALER_FILEPATH): # -> BaseEstimator:
     """Load a fitted sklearn scaler object from a joblib file.
 
     Parameters
