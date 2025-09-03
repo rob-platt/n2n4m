@@ -170,6 +170,10 @@ class CRISMImage:
             Must be a .hdr file. The .img and .lbl files will be written with the same name.
         data : np.ndarray
             Image to write.
+        reverse_bands : bool, optional
+            If True, reverse the bands of the image before writing.
+            This is necessary as the CRISM Analysis Toolkit of ENVI reads the bands in reverse order.
+            Default is False.
         """
         io.write_image(filepath, data, self.SPy, reverse_bands)
         return None

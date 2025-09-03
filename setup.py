@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 DESCRIPTION = 'Noise2Noise for Mars: Package for denoising and visualization of CRISM data L sensor data.'
 LONG_DESCRIPTION = DESCRIPTION
 
@@ -13,7 +13,7 @@ setup(
     description=DESCRIPTION,
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
-    python_requires=">=3.10, <3.12",
+    python_requires=">=3.10, <3.14",
     packages=find_packages(),
     package_data={
         "n2n4m": ["data/*"]
