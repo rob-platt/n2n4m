@@ -51,6 +51,10 @@ class CRISMImage:
         Image after being ratioed.
         Ratioing acheived using GMM from [1] to identify bland pixels.
         (n_rows, n_columns, n_wavelengths)
+    bad_pix_mask : np.ndarray
+        Boolean array of whether each voxel value was imputed during
+        the ratioing process.
+        (n_rows, n_columns, n_wavelengths)
 
     References
     ----------
@@ -92,7 +96,9 @@ class CRISMImage:
         im_name = im_name.split("_")[0]
         return im_name
 
-    def ratio_image(self, train_data_dir: str = "data") -> None:
+    def ratio_image(
+        self, train_data_dir: str = "data", threshold: float = 1.0
+    ) -> None:
         """Ratio the image using the Plebani bland pixel model.
         Bad values (65535) are imputed before ratioing.
         Uses the 350 bands in PLEBANI_WAVELENGTHS to determine pixel blandness.
@@ -104,6 +110,8 @@ class CRISMImage:
             Directory containing the training data for the GMM.
             Training data must be called "CRISM_bland_unratioed.mat"
             Default dir "data".
+        threshold : float, optional, default 1.0
+            Bad channel value threshold for imputation.
         """
         if self.ratioed_image is not None:
             print("Image has already been ratioed.")
@@ -113,13 +121,13 @@ class CRISMImage:
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
-        filtered_image, bad_pix_mask = (
-            preprocessing.impute_bad_values_in_image(self.image_array)
+        filtered_image, self.bad_pix_mask = (
+            preprocessing.impute_bad_values_in_image(
+                self.image_array, threshold=threshold
+            )
         )
         despiked_image = remove_spikes_column(filtered_image, size=3, sigma=5)
-        ratioed_image = ratio(despiked_image, pixel_blandness)
-        ratioed_image[bad_pix_mask] = 65535.0
-        self.ratioed_image = ratioed_image
+        self.ratioed_image = ratio(despiked_image, pixel_blandness)
         return
 
     def calculate_summary_parameter(self, parameter: str) -> None:
@@ -149,7 +157,9 @@ class CRISMImage:
         ](flattened_image, ALL_WAVELENGTHS).reshape(self.spatial_dims)
         return
 
-    def write_image(self, filepath: str, data: np.ndarray) -> None:
+    def write_image(
+        self, filepath: str, data: np.ndarray, reverse_bands: bool = False
+    ) -> None:
         """Write the image to a new file.
         Uses the original file .hdr and .lbl files to generate the new files.
 
@@ -161,7 +171,7 @@ class CRISMImage:
         data : np.ndarray
             Image to write.
         """
-        io.write_image(filepath, data, self.SPy)
+        io.write_image(filepath, data, self.SPy, reverse_bands)
         return None
 
 
@@ -176,6 +186,9 @@ class CRISMImageCotcat(CRISMImage):
     ----------
     denoised_image : np.ndarray
         Image after being denoised with CoTCAT.
+        (n_rows, n_columns, n_wavelengths)
+    denoised_bad_pixel_mask : np.ndarray
+        Bad channel values imputed prior to denoising.
         (n_rows, n_columns, n_wavelengths)
     ratioed_denoised_image : np.ndarray
         CoTCAT denoised image after being ratioed.
@@ -212,7 +225,9 @@ class CRISMImageCotcat(CRISMImage):
         self.ratioed_denoised_image = None
 
     def cotcat_denoise(
-        self, wavelengths: tuple[float, ...] = ALL_WAVELENGTHS
+        self,
+        wavelengths: tuple[float, ...] = ALL_WAVELENGTHS,
+        threshold: float = 1.0,
     ) -> None:
         """Apply CoTCAT denoising to the image.
         Currently only supports denoising the entire wavelength range.
@@ -221,8 +236,11 @@ class CRISMImageCotcat(CRISMImage):
         Parameters
         ----------
         wavelengths : tuple[float, ...], optional
-            Wavelengths to denoise. Must be the same length as the number of bands in the image.W
+            Wavelengths to denoise. Must be the same length as the number of bands in the image.
             Default ALL_WAVELENGTHS.
+        threshold : float, optional
+            Bad value threshold for imputation prior to denoising.
+            Default 1.0
         """
         if self.num_bands != len(wavelengths):
             raise ValueError(
@@ -232,8 +250,10 @@ class CRISMImageCotcat(CRISMImage):
             print("Image has already been denoised using CoTCAT.")
             return
 
-        filtered_image, bad_pix_mask = (
-            preprocessing.impute_bad_values_in_image(self.image_array.copy())
+        filtered_image, self.denoised_bad_pix_mask = (
+            preprocessing.impute_bad_values_in_image(
+                self.image_array.copy(), threshold=threshold
+            )
         )
         self.denoised_image = cotcat_denoise(filtered_image, wavelengths)
         return None
@@ -263,6 +283,7 @@ class CRISMImageCotcat(CRISMImage):
         pixel_blandness = calculate_pixel_blandness(
             flattened_image_clipped, self.spatial_dims, train_data_dir
         )
+        # This step should be superfluous
         filtered_image, bad_value_mask = (
             preprocessing.impute_bad_values_in_image(self.denoised_image)
         )
@@ -315,6 +336,9 @@ class CRISMImageN2N4M(CRISMImage):
         Noise2Noise1D model.
     denoised_image : np.ndarray
         Image after being denoised with Noise2Noise1D.
+        (n_rows, n_columns, n_wavelengths)
+    denoised_bad_pixel_mask : np.ndarray
+        Bad channel values imputed prior to denoising.
         (n_rows, n_columns, n_wavelengths)
     ratioed_denoised_image : np.ndarray
         N2N4M denoised image after being ratioed.
@@ -389,7 +413,9 @@ class CRISMImageN2N4M(CRISMImage):
         self.n2n4m_model.to(device(check_available_device()))
         return None
 
-    def n2n4m_denoise(self, batch_size: int = 1000) -> None:
+    def n2n4m_denoise(
+        self, batch_size: int = 1000, threshold: float = 1.0
+    ) -> None:
         """Apply Noise2Noise1D denoising to the image.
         Will use GPU acceleration if available.
         If running into memory issues, reduce batch size.
@@ -399,6 +425,9 @@ class CRISMImageN2N4M(CRISMImage):
         batch_size : int, optional
             Batch size for denoising.
             Default 1000.
+        threshold : float, optional
+            Bad channel value threshold for imputation prior to denoising.
+            Default 1.0
         """
         if self.n2n4m_scaler == None:
             raise ValueError(
@@ -413,8 +442,10 @@ class CRISMImageN2N4M(CRISMImage):
             -1, self.num_bands
         )  # Model functions expect flattened spatial dims
         bands_to_denoise, additional_bands = clip_bands(spectra)
-        bands_to_denoise, bad_value_mask = (
-            preprocessing.impute_bad_values_in_image(bands_to_denoise)
+        bands_to_denoise, self.denoised_bad_value_mask = (
+            preprocessing.impute_bad_values_in_image(
+                bands_to_denoise, threshold=threshold
+            )
         )  # Impute bad values
         bands_to_denoise = self.n2n4m_scaler.transform(bands_to_denoise)
         spectra_dataloader = create_dataloader(
@@ -428,10 +459,6 @@ class CRISMImageN2N4M(CRISMImage):
         )
         denoised_spectra.cpu().numpy()
         denoised_spectra = combine_bands(denoised_spectra, additional_bands)
-        # Needs to match original for ENVI
-        denoised_spectra = denoised_spectra.astype("float32")
-        # Catch any negative values
-        denoised_spectra[denoised_spectra < 0] = 65535.0
         self.denoised_image = denoised_spectra.reshape(*self.im_shape)
         return None
 
