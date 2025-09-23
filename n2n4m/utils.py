@@ -1,8 +1,12 @@
 import pandas as pd
+from typing import TypeVar
+
+DataFrameOrSeries = TypeVar("DataFrameOrSeries", pd.DataFrame, pd.Series)
 
 
 def label_list_to_string(dataset: pd.DataFrame) -> pd.DataFrame:
-    "Utility function to convert the label from being wrapped in a list to an int"
+    """Utility function to convert the label from being wrapped in a list to
+    an int"""
     try:
         dataset["Pixel_Class"] = dataset["Pixel_Class"].apply(lambda x: x[0])
     except TypeError:
@@ -11,7 +15,8 @@ def label_list_to_string(dataset: pd.DataFrame) -> pd.DataFrame:
 
 
 def label_string_to_list(dataset: pd.DataFrame) -> pd.DataFrame:
-    "Utility function to convert the label from being an int to being wrapped in a list"
+    """Utility function to convert the label from being an int to
+    being wrapped in a list"""
     try:
         dataset["Pixel_Class"] = dataset["Pixel_Class"].apply(lambda x: [x])
     except TypeError:
@@ -19,11 +24,12 @@ def label_string_to_list(dataset: pd.DataFrame) -> pd.DataFrame:
     return dataset
 
 
-def convert_coordinates_to_xy(dataset):
-    "Utility function to convert from a Coordinates column/index to x and y columns/index"
-    if type(dataset) != pd.DataFrame and type(dataset) != pd.Series:
+def convert_coordinates_to_xy(dataset: DataFrameOrSeries) -> DataFrameOrSeries:
+    """Utility function to convert from a Coordinates column/index to
+    x and y columns/index"""
+    if not isinstance(dataset, (pd.DataFrame, pd.Series)):
         raise TypeError("Dataset must be a pandas DataFrame or Series")
-    if type(dataset) == pd.Series:
+    if isinstance(dataset, pd.Series):
         dataset["x"] = dataset["Coordinates"][0]
         dataset["y"] = dataset["Coordinates"][1]
         dataset = dataset.drop("Coordinates")
@@ -34,20 +40,25 @@ def convert_coordinates_to_xy(dataset):
     return dataset
 
 
-def convert_xy_to_coordinates(dataset):
-    "Utility function to convert from x and y columns/index to a Coordinates column/index"
-    if type(dataset) != pd.DataFrame and type(dataset) != pd.Series:
+def convert_xy_to_coordinates(dataset: DataFrameOrSeries) -> DataFrameOrSeries:
+    """Utility function to convert from x and y columns/index to
+    a Coordinates column/index"""
+    if not isinstance(dataset, (pd.DataFrame, pd.Series)):
         raise TypeError("Dataset must be a pandas DataFrame or Series")
-    if type(dataset) == pd.Series:
+    if isinstance(dataset, pd.Series):
         dataset["Coordinates"] = [dataset["x"], dataset["y"]]
         dataset = dataset.drop(index=["x", "y"])
     else:
-        dataset["Coordinates"] = dataset.apply(lambda x: [x["x"], x["y"]], axis=1)
+        dataset["Coordinates"] = dataset.apply(
+            lambda x: [x["x"], x["y"]], axis=1
+        )
         dataset = dataset.drop(columns=["x", "y"])
     return dataset
 
 
-def find_breakpoint(wavelengths: tuple[float, ...], threshold: float = 0.01) -> int:
+def find_breakpoint(
+    wavelengths: tuple[float, ...], threshold: float = 0.01
+) -> int:
     """
     Identify any gaps in the wavelengths where there are bands missing.
     Useful for identifying where bands are dropped to avoid bad bands.
