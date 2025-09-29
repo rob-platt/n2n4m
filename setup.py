@@ -22,7 +22,6 @@ setup(
     install_requires=[
         "torch >= 2.0",
         "scikit-learn >= 1.2",
-        "ray >= 2",
         "pandas",
         "pytest",
         "ipykernel",

@@ -63,6 +63,11 @@ To retrain an N2N4M model, the following steps are required:
 * Run the bland_dataset_collation.py and mineral_dataset_collation.py scripts in the /scripts folder. This will extract all relevant pixels from the raw images and save them as a single .json file. 
 * Run the train.py script in the /scripts folder. This will train the N2N4M model and save the weights in the /data folder.
 
+To run hyperparameter tuning, the ```Ray``` library is also required, which can be installed through pip:
+```bash
+pip install ray>=2
+```
+
 All of the above steps are also reqeired to run any notebook in notebooks/n2n4m_results. The notebooks in this folder are designed to evaluate the performance of the N2N4M model.
 
 #### Tests
